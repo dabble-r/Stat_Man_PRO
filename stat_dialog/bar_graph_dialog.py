@@ -42,7 +42,6 @@ class BarGraphDialog(QDialog):
         self.checkbox_setup()
         self.checkbox_widget.setLayout(self.check_buttons_layout)
        
-
                                 # ---------------------------------------------------------------------------------------------------------------------#
                                                                 # stat UI and widget setup #
 

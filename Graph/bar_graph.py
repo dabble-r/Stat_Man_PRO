@@ -19,6 +19,7 @@ from PySide6.QtCharts import (
 )
 from PySide6.QtGui import QPainter, QBrush
 from PySide6.QtCore import Qt, QPointF
+from decimal import *
 import sys
 
 class BarGraphWithDualAxes(QMainWindow):
@@ -114,6 +115,7 @@ class BarGraphWithDualAxes(QMainWindow):
 
         #print('barset vals:', vals)
         vals.append(avg)
+        #print('teating vals - avg', vals, avg)
 
         team = QBarSet(name)
 
@@ -137,6 +139,7 @@ class BarGraphWithDualAxes(QMainWindow):
         val_float = float(val)
         temp = QPointF(indx, val_float)
         line_series.append(temp)
+
 
 class BarGraph(QMainWindow):
   def __init__(self, team_names, data_points, stat_names):
@@ -170,6 +173,21 @@ class BarGraph(QMainWindow):
           QColor("#f1c40f"),  # era
           QColor("#000000")   # avg
       ]
+  
+  def set_context(self, val):
+      c = getcontext().prec = val
+      return c
+
+  def isLen(self, x, y):
+      return len(str(x)) > y
+
+  def get_dec(self, x, val):
+    c = self.set_context(val)
+    dec = Decimal(x) / 1
+    flag = self.isLen(dec, 4)
+    if not flag:
+        return dec 
+    return round(dec, 3)
 
   def _create_barsets(self):
     self.series_list = []
@@ -180,13 +198,16 @@ class BarGraph(QMainWindow):
         series.setLabelsPosition(QBarSeries.LabelsPosition.LabelsCenter)
         
         #series.setLabelsFormat("@value ")
-        series.setBarWidth(0.90)
+        series.setBarWidth(0.99)
 
         barset = QBarSet(stat_name)
         
         barset.setBrush(QBrush(self.colors[stat_index]))
 
         for team_stats in self.data_points:
+            avg = self.get_dec(self.data_points[stat_index-1][-1], 3)
+            print('avg:', avg)
+            
             barset.append(team_stats[stat_index])
 
         series.append(barset)
@@ -221,6 +242,7 @@ class BarGraph(QMainWindow):
     #max_range = round(max_range)
     y_axis_left = QValueAxis()
     y_axis_left.setRange(0, max_range)
+    y_axis_left.setLabelFormat("%.0f")
     
     y_axis_left.setTitleText("Stat Values")
     self.chart.addAxis(y_axis_left, Qt.AlignLeft)
@@ -230,8 +252,9 @@ class BarGraph(QMainWindow):
     # Right Y-axis for avg
     self.y_axis_right = QValueAxis()
     self.y_axis_right.setRange(0, 1.0)
-    #y_axis_right.setTickInterval(0.25)
+    self.y_axis_right.setTickInterval(0.100)
     self.y_axis_right.setTitleText("AVG")
+    self.y_axis_right.setLabelFormat("%.3f")
     self.chart.addAxis(self.y_axis_right, Qt.AlignRight)
     self.series_list[5].attachAxis(self.y_axis_right)
 
@@ -265,19 +288,3 @@ if __name__ == "__main__":
     sys.exit(app.exec())
 
     
-'''
-# deprecated 
-# if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    window = BarGraphWithDualAxes()
-    window.create_barset([('team1', 'Beef Sliders', [1,2,3,4,5]), ('team2', 'Blues', [10,6,3,7,8]), ('team3', 'S9', [11,4,7,9,4]), ('team4', 'Pelicans', [12,5,9,10,22]), ('team5', 'Rougarou', [13,7,6,3,5])])
-    window.create_line_series([('team1', 'Beef Sliders', 0.432), ('team1', 'Beef Sliders', 0.500), ('team1', 'Beef Sliders', 0.375), ('team1', 'Beef Sliders', 0.600), ('team1', 'Beef Sliders', 0.190)])
-
-    max = window.set_y1_range()
-    window._axis_y1.setRange(0, max)
-    window.resize(1000, 750)
-
-    window.show()
-
-    sys.exit(app.exec())'''

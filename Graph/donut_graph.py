@@ -47,7 +47,7 @@ class DonutBreakdownChart(QChart):
         self.series_dict = {}
 
     def add_breakdown_series(self, breakdown_series, color):
-        font = QFont("Arial", 12)
+        font = QFont("Arial", 14)
 
         # add breakdown series as a slice to center pie
         main_slice = MainSlice(breakdown_series)
@@ -103,7 +103,7 @@ class DonutBreakdownChart(QChart):
                     label = marker.slice().label()
                     p = marker.slice().percentage() * 100
                     marker.setLabel(f"{label} {p:.2f}%")
-                    marker.setFont(QFont("Arial", 8))
+                    marker.setFont(QFont("Arial", 12))
     
     def pop_dict(self):
       for indx, el in enumerate(self.raw_data):

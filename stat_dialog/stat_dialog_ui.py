@@ -26,7 +26,11 @@ from League.player import Player, SamplePlayer
 from League.team import Team
 from stat_dialog.bar_graph_dialog import BarGraphDialog
 from Graph.graph_window import GraphWindow
+from decimal import getcontext, Decimal
+import random
 import sys
+
+
 
 
 class Ui_StatDialog(QDialog):
@@ -97,6 +101,35 @@ class Ui_StatDialog(QDialog):
         self.graph_window = GraphWindow(self, 'Stats Graph')
             
                                 # ------------------------------------------------------------------------------ #
+
+    def set_context(self, val):
+      c = getcontext().prec = val
+      return c
+
+    def isLen(self, x, y):
+        return len(str(x)) > y
+
+    def get_dec(self, x, val):
+        c = self.set_context(val)
+        dec = Decimal(x) / 1
+        flag = self.isLen(dec, 4)
+        if not flag:
+            return dec 
+        return round(dec, 3)
+    
+    def get_rand_dec_lst(self, val):
+        c = self.set_context(val)
+        ret = []
+        while len(ret) < 5:
+            rand = random.random()
+            dec = Decimal(rand) / 1
+            flag = self.isLen(dec, 4)
+            if not flag:
+                ret.append(dec) 
+            ret.append(round(dec, 3))
+        return ret
+        
+
     def get_label(self):
         if self.selected is None:
             return "League Stats"
@@ -124,15 +157,6 @@ class Ui_StatDialog(QDialog):
     
     def get_graph(self):
         #self.graph_window = GraphWindow('Stats Graph')
-        '''self.graph_window.resize(750, 600)
-        #self.graph_window.setWindowModality(Qt.NonModal)
-        self.graph_window.setWindowFlags(
-            Qt.Window |
-            Qt.WindowStaysOnTopHint|
-            Qt.CustomizeWindowHint |
-            Qt.WindowCloseButtonHint
-        )
-        self.graph_window.setAttribute(Qt.WA_TranslucentBackground)'''
 
         flag = self.check_league()
         #print('get graph flag:', flag)
@@ -143,7 +167,7 @@ class Ui_StatDialog(QDialog):
             case 'league':
                 self.get_curr_league()
             case 'sample team':
-                self.message.show_message("Must update player hits.\nSample team bar graph.")
+                self.message.show_message("Must update player hits, walks, and so.\nSample team bar graph.")
                 self.get_sample_team() 
             case 'team':
                 self.get_curr_graph() 
@@ -214,13 +238,16 @@ class Ui_StatDialog(QDialog):
     def get_sample_league(self):
         teams = ['Beef Sliders', 'Blues', 'S9', 'Pelicans', 'Rougarou']
         stats = ['hits', 'so', 'runs', 'era', 'k', 'avg']
-                
+        
+
+        r1, r2, r3, r4, r5 = self.get_rand_dec_lst(3)
+
         data = [
-            [1,2,3,4,5, 0.150],
-            [10,6,3,7,8,0.250],
-            [11,4,7,9,4,0.350], 
-            [12,5,9,10,22,0.450], 
-            [13,7,6,3,5,0.550]
+            [1,2,3,4,5, r1],
+            [10,6,3,7,8, r2],
+            [11,4,7,9,4, r3], 
+            [12,5,9,10,22, r4], 
+            [13,7,6,3,5, r5]
         ]
 
         self.bar_graph = BarGraph(teams, data, stats)
@@ -232,9 +259,12 @@ class Ui_StatDialog(QDialog):
     def get_sample_team(self):
         teams = ['Beef Sliders']
         stats = ['hits', 'so', 'runs', 'era', 'k', 'avg']
-                
+        
+        rand = random.random()
+        rand_dec = self.get_dec(rand, 3)
+
         data = [
-            [5,6,7,8,9, 0.350],
+            [5,6,7,8,9, rand_dec],
         ]
 
         self.bar_graph = BarGraph(teams, data, stats)
@@ -265,6 +295,21 @@ class Ui_StatDialog(QDialog):
         #self.bar_graph.y_axis_right.setTickInterval(0.10)
         self.graph_window.setCentralWidget(self.bar_graph)
         self.graph_window.show()
+    
+    def set_context(self, val):
+        c = getcontext().prec = val
+        return c
+
+    def isLen(self, x, y):
+        return len(str(x)) > y
+
+    def get_dec(self, x, val):
+        c = self.set_context(val)
+        dec = Decimal(x) / 1
+        flag = self.isLen(dec, 4)
+        if not flag:
+            return dec 
+        return round(dec, 3)
 
     def get_curr_graph(self):
         stats = ['hits', 'so', 'runs', 'era', 'k', 'avg']
@@ -277,7 +322,9 @@ class Ui_StatDialog(QDialog):
         runs = int(find_team.get_team_runs())
         era = float(find_team.get_team_era())
         k = int(find_team.get_team_k())
-        avg = float(find_team.get_bat_avg())
+        #avg = "{:.3f}".format(float(find_team.get_bat_avg()))
+        avg = self.get_dec(find_team.get_bat_avg(), 3)
+        #print('one team avg:', avg)
         data = [
             [hits, so, runs, era, k, avg]
         ]

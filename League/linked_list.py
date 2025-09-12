@@ -88,7 +88,8 @@ class LinkedList():
       runs = int(traverser.team.get_team_runs())
       era = float(traverser.team.get_team_era())
       k = int(traverser.team.get_team_k())
-      avg = float(traverser.team.get_bat_avg())
+      avg = round(float(traverser.team.get_bat_avg()), 3)
+      #avg = "{:.3f}".format(float(traverser.team.get_bat_avg()))
       stats = [hits, so, runs, era, k, avg]
 
       if hits == 0:
@@ -131,7 +132,7 @@ class LinkedList():
         runs = int(traverser.team.get_team_runs())
         era = float(traverser.team.get_team_era())
         k = int(traverser.team.get_team_k())
-        avg = float(traverser.team.get_bat_avg())
+        avg = round(float(traverser.team.get_bat_avg()), 3)
         stats = [hits, so, runs, era, k, avg]
 
         if hits == 0:

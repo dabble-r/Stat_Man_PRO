@@ -250,7 +250,7 @@ class Ui_NewTeam(QWidget, object):
 
         # test get all team objs in league 
         all_teams = self.league.get_all_objs()
-        print(all_teams)
+        #print(all_teams)
 
 
     def button_upload_handler(self):
