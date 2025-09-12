@@ -1,0 +1,155 @@
+from PySide6.QtWidgets import QWidget, QDialog, QLabel, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QRadioButton, QButtonGroup, QHBoxLayout, QSizePolicy, QTreeWidgetItem
+from PySide6.QtGui import QIntValidator
+from PySide6.QtCore import QCoreApplication, Qt, QTimer
+from start_page.league_view_teams import LeagueViewTeams
+
+import random
+
+class RemoveDialog(QDialog):
+    def __init__(self, league, selected, leaderboard, lv_teams, lv_players, parent=None):
+        super().__init__(parent)
+        self.league = league
+        self.selected = selected
+        self.leaderboard = leaderboard
+        self.lv_teams = lv_teams
+        self.lv_players = lv_players
+
+        # ----- Submit Button -----
+        self.submit_button = QPushButton("Submit")
+        self.submit_button.setFixedWidth(100)
+        self.submit_button.clicked.connect(self.remove_item)
+
+        self.radio_group = QButtonGroup(self)
+        self.radio_buttons = []
+
+        options = ["League", "Current View"]
+
+        radio_buttons_layout = QVBoxLayout()
+        radio_buttons_layout.setAlignment(Qt.AlignTop)
+        for i in range(len(options)):
+            radio = QRadioButton(f"{options[i]}")
+            radio.setChecked(True)
+            self.radio_group.addButton(radio, i)
+            self.radio_buttons.append(radio)
+            radio_buttons_layout.addWidget(radio)
+
+        # Container widget for the radio buttons (optional)
+        radio_buttons_widget = QWidget()
+        radio_buttons_widget.setLayout(radio_buttons_layout)
+
+                                # ---------------------------------------------------------------------------------------------------------------------#
+
+        # Horizontal layout: form on the left, radios on the right
+        content_layout = QHBoxLayout()
+        content_layout.addStretch()
+        content_layout.addWidget(radio_buttons_widget)
+        content_layout.addStretch()
+
+                            # -----------------------------------------------------------------------------------------------------# 
+
+        # ----- Main Layout ----- #
+        main_layout = QVBoxLayout()
+        main_layout.addStretch()
+        main_layout.addSpacing(20)
+        main_layout.addLayout(content_layout)
+        main_layout.addWidget(self.submit_button, alignment=Qt.AlignCenter)
+
+        self.setLayout(main_layout)
+
+    def get_radio_selection(self):
+        selection = self.radio_group.checkedButton().text()
+        return selection
+
+    def remove_current_view(self):
+        #print('current view') 
+
+        if self.league.COUNT == 0:
+            #print('no teams in league')
+            return 
+        
+        #print('selection:', self.selected)
+
+        if len(self.selected) == 2:
+            team, avg = self.selected
+            find_team = self.league.find_team(team)
+            
+            if find_team:
+              self.lv_teams.remove_league_view_wl(find_team)
+              self.lv_teams.remove_league_view_avg(find_team)
+
+        elif len(self.selected) == 3:
+            player, team, avg = self.selected
+            find_team = self.league.find_team(team)
+            find_player = find_team.get_player(player)
+
+            if find_player:
+                self.lv_players.remove_league_view(find_player)
+                self.leaderboard.remove_handler(find_player)
+
+        #print('league after:', self.league)
+    
+    def remove_league(self):
+        #print('league before:', self.league)
+
+        if self.league.COUNT == 0:
+            #print('no teams in league')
+            return 
+        
+        #print('selection:', self.selected)
+
+        if len(self.selected) == 2:
+            ques = QMessageBox(self)
+            ques.setWindowTitle("Confirm Action")
+            ques.setText("Do you want to remove team and all associated players?")
+            ques.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            ques.setDefaultButton(QMessageBox.Cancel)
+
+            result = ques.exec()
+            if result == QMessageBox.Cancel:
+                return
+
+            team, avg = self.selected
+            find_team = self.league.find_team(team)
+
+            if find_team:
+                self.lv_teams.remove_league_view_wl(find_team)
+                self.lv_teams.remove_league_view_avg(find_team)
+
+                team_players = find_team.players
+                for el in team_players:
+                    self.lv_players.remove_league_view(el)
+                    self.leaderboard.refresh_leaderboard_removal(el)
+                
+                self.league.remove_team(team) 
+
+        elif len(self.selected) == 3:
+            ques = QMessageBox(self)
+            ques.setWindowTitle("Confirm Action")
+            ques.setText("Do you want to remove player and all stats permanently?")
+            ques.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            ques.setDefaultButton(QMessageBox.Cancel)
+
+            result = ques.exec()
+            if result == QMessageBox.Cancel:
+                return
+
+            player, team, avg = self.selected
+            find_team = self.league.find_team(team)
+            find_player = find_team.get_player(player)
+
+            if find_player:
+                find_team.remove_player(player)
+                self.lv_players.remove_league_view(find_player)
+                self.leaderboard.remove_handler(find_player)
+
+        #print('after removal:', self.league)
+                
+    def remove_item(self):
+        selection = self.get_radio_selection()
+        if selection == "Current View":
+            ##print('current')
+            self.remove_current_view()
+        elif selection == "League":
+            ##print('league')
+            self.remove_league()
+        self.close()
