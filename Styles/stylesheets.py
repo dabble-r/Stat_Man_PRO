@@ -1,8 +1,8 @@
 class StyleSheets():
     def __init__(self):
         #self.main_styles = self.get_monochrome_style()
-        self.light_style = self.get_monochrome_1_style()
-        self.dark_style = self.get_monochrome_2_style()
+        self.light_styles = self.get_monochrome_1_style()
+        self.dark_styles = self.get_monochrome_2_style()
         
 
     

@@ -34,7 +34,7 @@ class MainWindow(QWidget):
         self.undo = Undo(self.stack, self.league)
         #self.file_dir = None
         self.message = Message(self.styles, parent=self)
-        self.setStyleSheet(self.styles.light_style)
+        self.setStyleSheet(self.styles.light_styles)
         self.theme = None
         
         self.title = "Welcome to the league"
