@@ -38,6 +38,9 @@ class FileDialog(QWidget):
     def get_file_path(self):
         #print(f'get file path: {self.file_path}')
         return self.file_path
+    
+    def get_cwd(self):
+        pass
         
 
 

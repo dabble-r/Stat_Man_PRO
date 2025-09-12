@@ -1,4 +1,5 @@
 import sys 
+import os
 #from PySide6.QtWidgets import QWidget, QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QGridLayout, QSizePolicy
 from start_page.league_view_players import LeagueViewPlayers
 from start_page.league_view_teams import LeagueViewTeams
@@ -33,7 +34,7 @@ class MainWindow(QWidget):
         self.undo = Undo(self.stack, self.league)
         #self.file_dir = None
         self.message = Message(self.styles, parent=self)
-        self.setStyleSheet(self.styles.main_styles)
+        self.setStyleSheet(self.styles.light_style)
         self.theme = None
         
         self.title = "Welcome to the league"

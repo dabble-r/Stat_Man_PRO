@@ -2,3 +2,5 @@ myenv/
 demo/ 
 TabWidget/ 
 Icon/ 
+Images/
+*.txt
