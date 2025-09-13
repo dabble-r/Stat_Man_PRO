@@ -205,9 +205,6 @@ class BarGraph(QMainWindow):
         barset.setBrush(QBrush(self.colors[stat_index]))
 
         for team_stats in self.data_points:
-            avg = self.get_dec(self.data_points[stat_index-1][-1], 3)
-            print('avg:', avg)
-            
             barset.append(team_stats[stat_index])
 
         series.append(barset)

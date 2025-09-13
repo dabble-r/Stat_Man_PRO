@@ -1,15 +1,14 @@
 import sys 
 import os
-#from PySide6.QtWidgets import QWidget, QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QGridLayout, QSizePolicy
 from start_page.league_view_players import LeagueViewPlayers
 from start_page.league_view_teams import LeagueViewTeams
 from Add_Save.add_save_ui import Ui_Add_Save
 from start_page.selection import Selection
 from Mouse_Events.tree_event_filter import TreeEventFilter
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QPushButton, QDialog, QGroupBox, QButtonGroup, QMessageBox, QMainWindow
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QPushButton, QDialog, QGroupBox, QButtonGroup, QMessageBox, QMainWindow, QSizeGrip
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
+    QSize, QTime, QTimer, QUrl, Qt)
 from PySide6.QtGui import QIntValidator, QCloseEvent
 from stat_dialog.stat_dialog_ui import Ui_StatDialog
 from update_dialog.update_dialog_ui import UpdateDialog
@@ -21,16 +20,19 @@ from Styles.stylesheets import StyleSheets
 from League.stack import Stack
 from Undo.undo import Undo
 from Message.message import Message
-from InstallWizard.install_wizard import InstallWizardDialog
+#from InstallWizard.install_wizard import InstallWizardDialog
 from CloseDialog.close import CloseDialog
+from Files.file_dialog import FileDialog
 
 class MainWindow(QWidget):
-    def __init__(self):
+    def __init__(self, app):
         super().__init__()
         self.selected = None
         self.league = LinkedList()
         self.styles = StyleSheets()
         self.stack = Stack()
+        self.app = app
+        
         self.undo = Undo(self.stack, self.league)
         #self.file_dir = None
         self.message = Message(self.styles, parent=self)
@@ -39,14 +41,14 @@ class MainWindow(QWidget):
         
         self.title = "Welcome to the league"
         self.setWindowTitle(self.title)
-        self.setGeometry(100, 100, 800, 600)  # Set window size
         self.setObjectName("Main Window") 
          
          # ---------------------------------------- install wizard setup ----------------------------------- #
 
-        self.exec_wizard() 
-        dir_path = self.wizard.get_selected_path()
-        self.file_dir = dir_path 
+        #self.exec_wizard() 
+        #dir_path = self.wizard.get_selected_path()
+        self.file_dialog = FileDialog(self.message, self)
+        self.file_dir = self.file_dialog.get_file_dir()
 
         self.league_view_teams = LeagueViewTeams(self.league, self.styles, self.stack, self.file_dir, self.message, parent=self)
         self.league_view_players = LeagueViewPlayers(self.league_view_teams, self.selected, self.league, self.styles, self.undo, self.file_dir, self.message, parent=self)
@@ -61,12 +63,7 @@ class MainWindow(QWidget):
         self.event_filter = TreeEventFilter(self.tree_widgets, self)
         self.set_event_filter()
 
-        # exp stlying 
-        # deprecated, style inherited through parents
-        #for el in self.tree_widgets:
-            #el.setStyleSheet(self.styles.modern_styles)
-
-        # ------------------------------------------------------------- #
+                                                # ------------------------------------------------------------------ # 
 
         # button group box - all buttons
         self.button_group_bottom = QGroupBox('Modify', self)
@@ -122,7 +119,6 @@ class MainWindow(QWidget):
 
         self.button_group_bottom.setLayout(self.v_layout_buttons_bottom)
 
-
         self.main_button_layout = QVBoxLayout()
 
         self.main_button_layout.addWidget(self.league_view_players.button_group)
@@ -146,15 +142,19 @@ class MainWindow(QWidget):
 
 
         # setup league basics on program start
+        self.showMaximized()
+
+        self.league_dialog = UpdateLeagueDialog(self.league, self.selected, self.message, self.leaderboard, self.league_view_teams, self.stack, self.undo, self.styles, parent=self)
+        self.pos_center(self.league_dialog)
+        #self.app.processEvents()
+
         self.setup_league_ui()
+
         self.title = f"Welcome to {self.league.get_name()}" if self.league.get_name() else "Welcome to the league"
         self.setWindowTitle(self.title)
 
         # ----------------------------------------------------------------------------- #
 
-        #self.close_dialog.custom_close()
-
-        # ----------------------------------------------------------------------------- #
     def closeEvent(self, event=QCloseEvent):
         reply = QMessageBox.question(
                 self,
@@ -172,7 +172,7 @@ class MainWindow(QWidget):
             #self.show()
 
     
-    def exec_wizard(self):
+    '''def exec_wizard(self):
         #self.wizard.center_over_parent()
         self.showMaximized()
         #self.setStyleSheet(self.styles.modern_styles)
@@ -188,7 +188,7 @@ class MainWindow(QWidget):
             sys.exit()
         #dir_path = self.wizard.get_selected_path()
         #self.file_dir = dir_path
-        ##print(f'file dir-main window: {self.file_dir}')
+        ##print(f'file dir-main window: {self.file_dir}')'''
 
     def set_event_filter(self):
         for tree in self.tree_widgets:
@@ -275,10 +275,26 @@ class MainWindow(QWidget):
         dialog.exec()
     
     def setup_league_ui(self):
-        dialog = UpdateLeagueDialog(self.league, self.selected, self.message, self.leaderboard, self.league_view_teams, self.stack, self.undo, self.styles, parent=self)
-        dialog.exec()
+        #dialog = UpdateLeagueDialog(self.league, self.selected, self.message, self.leaderboard, self.league_view_teams, self.stack, self.undo, self.styles, parent=self)
+        # Get screen geometry and center point
+        #dialog.show()
+        #self.app.processEvents()
+        #self.pos_center(dialog)
+        #QTimer.singleShot(0, lambda: self.pos_center(dialog))
+        self.league_dialog.exec()
 
     def refresh_view(self):
         self.refresh.restore_all()
-    
+
+    def pos_center(self, dialog):
+        screen = self.app.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        screen_center = screen_geometry.center()
+
+        # Calculate top-left point to move the dialog
+        dialog_geometry = dialog.frameGeometry()
+        dialog_geometry.moveCenter(screen_center)
+
+        # Move the dialog to the calculated position
+        dialog.move(dialog_geometry.topLeft())
     

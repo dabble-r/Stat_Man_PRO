@@ -28,6 +28,7 @@ class Save():
 
   def open_db(self):
     # Connect and insert
+    
     if self.db_exists() is not None:
       con, cur = self.db_exists()
       return con, cur
@@ -132,8 +133,6 @@ class Save():
           self.league.admin['Season Start'],
           self.league.admin['Season End']
       ))
-
-      
 
       # commit created tables and close
       con.commit()

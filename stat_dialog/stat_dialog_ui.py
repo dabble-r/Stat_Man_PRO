@@ -27,6 +27,7 @@ from League.team import Team
 from stat_dialog.bar_graph_dialog import BarGraphDialog
 from Graph.graph_window import GraphWindow
 from decimal import getcontext, Decimal
+from Files.image import Icon
 import random
 import sys
 
@@ -129,7 +130,6 @@ class Ui_StatDialog(QDialog):
             ret.append(round(dec, 3))
         return ret
         
-
     def get_label(self):
         if self.selected is None:
             return "League Stats"
@@ -239,7 +239,6 @@ class Ui_StatDialog(QDialog):
         teams = ['Beef Sliders', 'Blues', 'S9', 'Pelicans', 'Rougarou']
         stats = ['hits', 'so', 'runs', 'era', 'k', 'avg']
         
-
         r1, r2, r3, r4, r5 = self.get_rand_dec_lst(3)
 
         data = [
@@ -401,7 +400,8 @@ class Ui_StatDialog(QDialog):
             if image:
                 item = QTreeWidgetItem(['Photo', ''])
                 item.setTextAlignment(0, Qt.AlignCenter)
-                item.setIcon(1, image)
+                icon = self.get_icon(image)
+                item.setIcon(1, icon)
                 self.tree_widget.setIconSize(QSize(50, 50))
                 self.tree_widget.addTopLevelItem(item)
             ###print('find player:\n', find_player)
@@ -420,6 +420,11 @@ class Ui_StatDialog(QDialog):
                 self.tree_widget.addTopLevelItem(item) 
                 temp = None
             ##print("player:", ret)
+
+    def get_icon(self, file_path):
+        icon = Icon(file_path)
+        ret_icon = icon.create_icon()
+        return ret_icon
     
 
 

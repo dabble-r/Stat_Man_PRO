@@ -22,7 +22,7 @@ from Files.file_dialog import FileDialog
 from Files.image import Icon, PixMap
 
 class Ui_NewPlayer(QWidget, object):
-    def __init__(self, league_view, leaderboard, league, styles, file_dir, message, parent=None):
+    def __init__(self, league_view, leaderboard, league, file_dir, message, parent=None):
         super().__init__()
         self.league_view_players = league_view
         self.leaderboard = leaderboard
@@ -33,7 +33,6 @@ class Ui_NewPlayer(QWidget, object):
         self.file_dir = file_dir
         self.message = message
         self.parent = parent
-        self.styles = styles 
         self.new_player_flag = False
        
     
@@ -360,7 +359,7 @@ class Ui_NewPlayer(QWidget, object):
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
         self.image = None
-        dialog = FileDialog(self.file_dir, self.message, parent=self)
+        dialog = FileDialog(self.message, parent=self.parent)
         dialog.open_file_dialog()
         file_path = dialog.get_file_path()
         #print('file path:', file_path)

@@ -120,16 +120,17 @@ class LeagueViewPlayers(QWidget):
         # use layouts from league view players individually to customize main view
         #self.top_layout.addWidget(self.button_group)
     
+    # deprecated
+    
     def open_new_player_dialog(self):
         self.new_player_widget = QDialog(self.parent)
-        self.ui = Ui_NewPlayer(self.tree1_top, self.leaderboard, self.league, self.styles, self.file_dir, self.message, parent=self.parent)
+        self.ui = Ui_NewPlayer(self.tree1_top, self.leaderboard, self.league, self.file_dir, self.message, parent=self.new_player_widget)
         self.ui.setupUi(self.new_player_widget)
 
-        #inherited_stylesheet = self.styleSheet()
-        #self.new_player_widget.setStyleSheet(inherited_stylesheet)
+        
 
         self.new_player_widget.setWindowTitle("Add New Player")
-        self.new_player_widget.setModal(True)
+        #self.new_player_widget.setModal(True)
         self.new_player_widget.exec()
 
     def new_player_handler(self):

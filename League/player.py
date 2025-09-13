@@ -16,6 +16,7 @@ class SamplePlayer():
     self.hit = 0 
     self.bb = 0
     self.hbp = 0
+    self.put_out = 0
     self.so = 0
     self.hr = 0
     self.rbi = 0
@@ -48,12 +49,13 @@ class SamplePlayer():
   def set_min(self):
       #self.message.show_message('Sample chart. Player has no updated stats!')
       print('sample player set min called!')
-      self.at_bat = 55 
-      self.pa = 70
+      self.at_bat = 60 
+      self.pa = 75
       self.bb = 10 
       self.hbp = 5
       self.hit = 20
       self.sac_fly = 10
+      self.put_out = 5
       self.so = 20 
       self.fielder_choice = 5
       self.hr = 3  
@@ -88,6 +90,7 @@ class Player():
     self.hit = 0 
     self.bb = 0
     self.hbp = 0
+    self.put_out = 0
     self.so = 0
     self.hr = 0
     self.rbi = 0
@@ -137,12 +140,13 @@ class Player():
   
   def set_min(self):
       #self.message.show_message('Sample chart. Player has no updated stats!')
-      self.at_bat = 55 
-      self.pa = 70
+      self.at_bat = 70 
+      self.pa = 85
       self.bb = 10 
       self.hbp = 5
       self.hit = 20
       self.sac_fly = 10
+      self.put_out = 15
       self.so = 20 
       self.fielder_choice = 5
       self.hr = 3  
@@ -181,8 +185,8 @@ class Player():
             'Amount_2': [] 
             }
         ]
-        on_base = ['bb', 'hbp', 'singles', 'doubles', 'triples', 'hr']
-        outs = ['so', 'sac_fly', 'fielder_choice']
+        on_base = ['bb', 'hbp', 'fielder_choice', 'singles', 'doubles', 'triples', 'hr']
+        outs = ['so', 'sac_fly', 'put_out']
         attrs = self._get_attrs()
         if self.sample_player:
           attrs = self.sample_player._get_attrs()

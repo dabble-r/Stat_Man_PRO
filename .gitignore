@@ -4,3 +4,5 @@ TabWidget/
 Icon/ 
 Images/
 *.txt
+*.db
+*.csv

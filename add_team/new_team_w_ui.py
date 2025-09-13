@@ -252,7 +252,6 @@ class Ui_NewTeam(QWidget, object):
         all_teams = self.league.get_all_objs()
         #print(all_teams)
 
-
     def button_upload_handler(self):
         #print("upload")
         #print(f'file dir-new team: {self.file_dir}')
@@ -262,10 +261,10 @@ class Ui_NewTeam(QWidget, object):
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
         self.logo = None
-        dialog = FileDialog(self.file_dir, self.message, self)
+        dialog = FileDialog(self.message, self)
         dialog.open_file_dialog()
         file_path = dialog.get_file_path()
-        #print('file path-new team:', file_path)
+        print('file_path team_img:', file_path)
         self.get_icon(file_path)
     
     def get_icon(self, file_path):

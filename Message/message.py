@@ -3,15 +3,6 @@ from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QFontMetrics
 
 
-
-'''def show_message(self, text):
-
-  box = QMessageBox(self)
-  box.setWindowTitle('Update Message')
-  box.setText(text)
-  box.setStandardButtons(QMessageBox.Ok)
-  return box'''
-
 class Message(QDialog):
   def __init__(self, styles, parent=None):
     self.parent = parent

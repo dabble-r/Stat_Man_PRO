@@ -91,31 +91,12 @@ class UpdateDialog(QDialog):
         else:
             self.setWindowTitle("Update Player")
 
-            # layout controls
-            button_layout = QVBoxLayout()
-            button_layout.setAlignment(Qt.AlignVCenter)
-            button_layout.addWidget(self.pitching_button)
-            button_layout.addSpacing(10)
-            button_layout.addWidget(self.offense_button)
+            main_layout.addWidget(self.offense_button, alignment=Qt.AlignCenter)
+            main_layout.addWidget(self.pitching_button, alignment=Qt.AlignCenter)
+            main_layout.addWidget(self.upload_button, alignment=Qt.AlignCenter)
 
-            # manual layout
-            self.offense_button.setParent(self)
-            self.pitching_button.setParent(self)
-            button_width = 150
-            button_height = 50
-            dialog_width = self.width()
-            button_x = (dialog_width - button_width) // 2
-            offense_y = self.height() - button_height - 20
-            pitching_y = offense_y - button_height - 10  # 10px spacing
-            #tree_bottom_y = self.geometry().bottom() + 20  # 20px spacing
-            
-            self.offense_button.setGeometry(QRect(button_x, offense_y, button_width, button_height))
-            self.pitching_button.setGeometry(QRect(button_x, pitching_y, button_width, button_height))
+            self.setLayout(main_layout)
 
-            #self.offense_button.setGeometry(QRect(button_x, tree_bottom_y, button_width, button_height))
-            #self.pitching_button.setGeometry(QRect(button_x, tree_bottom_y-75, button_width, button_height))
-
-    
     def update_offense_handler(self):
         dialog = UpdateOffenseDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.styles, self.message, parent=self)
         dialog.setStyleSheet("QDialog { border: 2px solid black; }")
@@ -147,14 +128,15 @@ class UpdateDialog(QDialog):
         # call Icon method to create icon 
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
-        dialog = FileDialog(self.file_dir, self.message, self)
+        dialog = FileDialog(self.message, self)
         dialog.open_file_dialog()
         file_path = dialog.get_file_path()
         ##print('file path:', file_path)
         icon = self.get_icon(file_path)
         # test func 
-        self.change_logo(icon)
-        return icon
+        if len(self.selected) == 2:
+            self.change_logo(icon)
+        return icon, file_path
 
     def get_icon(self, file_path):
         icon = Icon(file_path)
@@ -162,19 +144,37 @@ class UpdateDialog(QDialog):
         return ret_icon
     
     def upload_handler(self):
-        #icon = self.get_icon()
-        team, avg = self.selected
         icon = None
 
-        try:
-            icon = self.upload_dialog()
-            find_team = self.league.find_team(team)
-            find_team.logo = icon  
-            self.message.show_message("Team logo successfully updated!")
+        if len(self.selected) == 2:
+            team, avg = self.selected
+            try:
+                icon, file_path = self.upload_dialog()
+                find_team = self.league.find_team(team)
+                find_team.logo = file_path  
+                #print(icon, file_path)
+                #print('team logo: ', find_team.logo)
+                self.message.show_message("Team logo successfully updated!")
+            
+            except Exception as e:
+                #print(f'error: new team logo not created!\n{e}')
+                self.message.show_message(f"Error uploading logo!")
+
+        elif len(self.selected) == 3: 
+            player, team, avg = self.selected
         
-        except Exception as e:
-            #print(f'error: new team logo not created!\n{e}')
-            self.message.show_message(f"Error uploading logo!")
+            try:
+                icon, file_path = self.upload_dialog()
+                find_team = self.league.find_team(team)
+                find_player = find_team.get_player(player)
+                find_player.image = file_path  
+                #print(icon, file_path)
+                #print('team logo: ', find_team.logo)
+                self.message.show_message("Player image successfully updated!")
+            
+            except Exception as e:
+                #print(f'error: new team logo not created!\n{e}')
+                self.message.show_message(f"Error uploading image!")
         
         return
     
@@ -209,20 +209,6 @@ class UpdateDialog(QDialog):
             if name == team:
                 item.setIcon(0, logo)
             
-
-
-        '''stack = [self.lv_teams.tree1_bottom.topLevelItem(i) for i in range(self.lv_teams.tree1_bottom.topLevelItemCount())]
-        
-        while stack:
-            item = stack.pop()
-            ##print(item.text(0))
-            if item.text(0) == target:
-                #print('found')
-                ##print(item)
-                indx = self.lv_teams.tree1_bottom.indexFromItem(item)
-                #print('index', indx)
-                '''
-
                         #----------------------------------------------------------------------------------------------------------------#
     
     
