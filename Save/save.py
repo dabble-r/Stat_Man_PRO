@@ -297,15 +297,16 @@ class Save():
               continue'''
             
             dir_list = keep_attrs(team) 
-            ##print(dir_list)
+            print(dir_list)
             cols = []
             vals = []
+            check_type = [int, str, float, dict, list, type(None)]
             ##print(exclude_attrs(team))
 
             for el in dir_list:
               val = getattr(team, el)
-              ##print('val:', val, type(val))
-              check_type = [int, str, float, dict, list, type(None)]
+              print('el--val:', el, val)
+              
 
               if isinstance(val, (dict)):
                 val = json.dumps(val)

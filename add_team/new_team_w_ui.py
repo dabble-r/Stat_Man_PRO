@@ -30,10 +30,9 @@ class Ui_NewTeam(QWidget, object):
         self.league_view_AVG = league_view_AVG
         self.league = league
         self.logo = None
+        self.file_path = None
         self.file_dir = file_dir
         self.styles = styles
-        #self.setStyleSheet(self.styles.modern_styles)
-        ##print('new pl - file dir:', self.file_dir)
         self.message = message
         self.parent = parent
         
@@ -201,20 +200,11 @@ class Ui_NewTeam(QWidget, object):
         # item WL
         new_team = Team(self.league, self.name.text().strip(), self.manager.text().strip(), message=self.message, max_roster=int(self.max_roster.text().strip()))
         # generate default lineup - dict
-        # default lineup populated of max roster size
-
-                                                    # ---------------------------------------------------- #
-        if self.logo:
-            # expreimental logo assignment
-            self.update_logo(new_team)
-            self.message.show_message('Team logo successfully added!')
-            # success message
-            #msg = show_message(self, 'Team logo successfully added!')
-            #msg.exec()
+        # default lineup populated of max roster size        
         
                                                     # ---------------------------------------------------- #
         new_team.populate_lineup()
-        new_team_logo = new_team.logo
+        
         wl = new_team.get_wl_avg()
         avg = new_team.get_bat_avg()
         vals = [self.name.text(), self.max_roster.text(), str(avg)]
@@ -224,10 +214,14 @@ class Ui_NewTeam(QWidget, object):
         self.league.add_team(new_team)
         item_WL = QTreeWidgetItem([vals[0], str(wl)])
         item_AVG = QTreeWidgetItem([vals[0], str(avg)])
-        if self.logo:
+        
+        if self.file_path:
             #self.league_view_WL.setColumnCount(3)
+            self.update_logo(new_team)
+            new_team_logo = self.get_icon(new_team.logo)
             item_WL.setIcon(0, new_team_logo)
             item_AVG.setIcon(0, new_team_logo)
+            self.message.show_message('Team logo successfully added!')
 
 
         #self.league_view_WL.setColumnCount(2)
@@ -260,23 +254,22 @@ class Ui_NewTeam(QWidget, object):
         # call Icon method to create icon 
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
-        self.logo = None
+        icon = None
         dialog = FileDialog(self.message, self)
         dialog.open_file_dialog()
-        file_path = dialog.get_file_path()
-        print('file_path team_img:', file_path)
-        self.get_icon(file_path)
-    
+        self.file_path = dialog.get_file_path()
+        #print('file_path team_img:', file_path)
+        #icon = self.get_icon(self.file_path)
+        #self.logo = icon
+            
     def get_icon(self, file_path):
         icon = Icon(file_path)
         ret_icon = icon.create_icon()
-        self.logo = ret_icon
+        return ret_icon
     
     def update_logo(self, team):
-        #icon = self.get_icon()
-        if self.logo:
-            team.logo = self.logo
-            return 
+        if self.file_path:
+            team.logo = self.file_path 
         #print('no team logo assigned')
         
     def insert_end_avg(self, find_team):

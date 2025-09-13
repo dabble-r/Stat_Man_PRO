@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QVBoxLayout, QLabel, Q
     QListWidgetItem, QSizePolicy, QWidget, QTreeWidget, QPushButton, QDialog, QHeaderView, QTreeWidgetItem)
 from add_team.new_team_w_ui import Ui_NewTeam
 from stat_dialog.stat_dialog_ui import Ui_StatDialog
+from Files.image import Icon
 import random
 
 
@@ -109,7 +110,7 @@ class LeagueViewTeams(QWidget):
             wl_avg = item.text(1)
             if team == name_target:
                 ###print("team match:", team, wl_avg)
-                item.setText(1, wl_avg_upd)
+                item.setText(1, wl_avg_upd) 
                 item.setIcon(0, target.logo)
             i += 1
 
@@ -152,6 +153,9 @@ class LeagueViewTeams(QWidget):
                 return
             i += 1
         
-
+    def get_icon(self, file_path):
+        icon = Icon(file_path)
+        ret_icon = icon.create_icon()
+        return ret_icon
     
     
