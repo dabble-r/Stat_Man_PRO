@@ -17,8 +17,15 @@ class Icon():
         return icon
     return None
   
+  def create_px_mp(self):
+    if self.file_path:
+      px_map = QIcon(self.file_path)
+      if px_map:
+        return px_map
+    return None
   
-class PixMap():
+  
+'''class PixMap():
   def __init__(self, file_path):
     #super().__init__(file_path)
     self.file_path = file_path
@@ -28,7 +35,7 @@ class PixMap():
       px_map = QIcon(self.file_path)
       if px_map:
         return px_map
-    return None
+    return None'''
 
 
   

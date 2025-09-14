@@ -30,6 +30,7 @@ class Ui_NewPlayer(QWidget, object):
         self.selection_pos = []
         self.selection_team = ''
         self.image = None
+        self.file_path = None
         self.file_dir = file_dir
         self.message = message
         self.parent = parent
@@ -361,9 +362,9 @@ class Ui_NewPlayer(QWidget, object):
         self.image = None
         dialog = FileDialog(self.message, parent=self.parent)
         dialog.open_file_dialog()
-        file_path = dialog.get_file_path()
+        self.file_path = dialog.get_file_path()
         #print('file path:', file_path)
-        self.get_icon(file_path)
+        self.get_icon(self.file_path)
     
     def get_icon(self, file_path):
         icon = Icon(file_path)
@@ -371,8 +372,8 @@ class Ui_NewPlayer(QWidget, object):
         self.image = ret_icon
     
     def update_image(self, player):
-        if self.image:
-            player.image = self.image
+        if self.file_path:
+            player.image = self.file_path
             return
         #print('no team logo assigned')
 

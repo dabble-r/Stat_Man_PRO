@@ -31,9 +31,6 @@ from Files.image import Icon
 import random
 import sys
 
-
-
-
 class Ui_StatDialog(QDialog):
     def __init__(self, league, message, selected, styles, parent=None):
         super().__init__(parent)
