@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QSizePolicy, QVBoxLayout, QWidget, QTreeWidgetItem, QMessageBox, QCheckBox, QButtonGroup)
 from League.player import Player, Pitcher
 from Files.file_dialog import FileDialog
-from Files.image import Icon, PixMap
+from Files.image import Icon
 
 class Ui_NewPlayer(QWidget, object):
     def __init__(self, league_view, leaderboard, league, file_dir, message, parent=None):

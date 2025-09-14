@@ -8,7 +8,7 @@ from update_dialog.update_pitching import UpdatePitchingDialog
 from update_dialog.update_admin import UpdateAdminDialog
 from update_dialog.update_team_stats import UpdateTeamStatsDialog
 from Files.file_dialog import FileDialog
-from Files.image import Icon, PixMap
+from Files.image import Icon
 import random
 
 class UpdateDialog(QDialog):

@@ -18,7 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QLineEdit, QSpacerItem,
     QPushButton, QSizePolicy, QVBoxLayout, QWidget, QTreeWidget, QTreeWidgetItem, QMessageBox)
 from League.team import Team
-from Files.image import Icon, PixMap
+from Files.image import Icon
 from Files.file_dialog import FileDialog
 
 import random
