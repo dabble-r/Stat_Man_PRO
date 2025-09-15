@@ -505,7 +505,6 @@ class Pitcher(Player):
     self.number = number 
     self.team = team
     self.positions = positions
-    self.image = None
     self.message = message
 
     # pitching attr

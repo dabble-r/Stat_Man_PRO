@@ -185,6 +185,9 @@ class Ui_NewTeam(QWidget, object):
         
     def new_team_handler(self):
         ##print("submitting...")
+        #self.logo = None 
+        #self.file_path = None
+
         team = self.name.text().strip()
 
         error = self.check_input()
@@ -215,12 +218,12 @@ class Ui_NewTeam(QWidget, object):
         item_WL = QTreeWidgetItem([vals[0], str(wl)])
         item_AVG = QTreeWidgetItem([vals[0], str(avg)])
         
-        if self.file_path:
+        if self.file_path and self.logo:
             #self.league_view_WL.setColumnCount(3)
-            self.update_logo(new_team)
-            new_team_logo = self.get_icon(new_team.logo)
-            item_WL.setIcon(0, new_team_logo)
-            item_AVG.setIcon(0, new_team_logo)
+            self.update_logo_path(new_team)
+            #new_team_logo, file_path = self.get_icon(self.file_path)
+            item_WL.setIcon(0, self.logo)
+            item_AVG.setIcon(0, self.logo)
             self.message.show_message('Team logo successfully added!')
 
 
@@ -254,22 +257,22 @@ class Ui_NewTeam(QWidget, object):
         # call Icon method to create icon 
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
-        icon = None
+        self.logo = None 
+        self.file_path = None
         dialog = FileDialog(self.message, self)
         dialog.open_file_dialog()
         self.file_path = dialog.get_file_path()
         #print('file_path team_img:', file_path)
-        #icon = self.get_icon(self.file_path)
-        #self.logo = icon
+        icon, file_path = self.get_icon(self.file_path)
+        self.logo = icon
             
     def get_icon(self, file_path):
         icon = Icon(file_path)
         ret_icon = icon.create_icon()
-        return ret_icon
+        return ret_icon, file_path
     
-    def update_logo(self, team):
-        if self.file_path:
-            team.logo = self.file_path 
+    def update_logo_path(self, team):
+        team.logo = self.file_path 
         #print('no team logo assigned')
         
     def insert_end_avg(self, find_team):

@@ -308,9 +308,9 @@ class Ui_NewPlayer(QWidget, object):
             else:
                 new_player = Player(name, num, find_team, self.league, pos, message=self.message)
                 #print(f'new player: {pos}') 
-            if self.image:
+            if self.image and self.file_path:
                 self.message.show_message('Player image successfully added!')
-                new_player.image = self.image
+                new_player.image = self.file_path
 
             #print('new player message inst', new_player.message)
             return new_player
@@ -360,6 +360,7 @@ class Ui_NewPlayer(QWidget, object):
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
         self.image = None
+        self.file_path = None
         dialog = FileDialog(self.message, parent=self.parent)
         dialog.open_file_dialog()
         self.file_path = dialog.get_file_path()

@@ -370,11 +370,13 @@ class Ui_StatDialog(QDialog):
             team_era = self.league.get_team_era()
             ##print('team era', team_era)
 
-            logo = find_team.logo 
-            if logo:
+            logo_path = find_team.logo 
+            print(logo_path, "team")
+            if logo_path:
                 item = QTreeWidgetItem(['Logo', ''])
                 item.setTextAlignment(0, Qt.AlignCenter)
-                item.setIcon(1, logo)
+                icon = self.get_icon(logo_path)
+                item.setIcon(1, icon)
                 self.tree_widget.setIconSize(QSize(50, 50))
                 self.tree_widget.addTopLevelItem(item)
             
@@ -392,12 +394,13 @@ class Ui_StatDialog(QDialog):
             player, team, avg = self.selected 
             find_team = self.league.find_team(team)
             find_player = find_team.get_player(player)
-            image = find_player.image
+            image_path = find_player.image
             #print('find player', find_player)
-            if image:
+            print(image_path, "player")
+            if image_path:
                 item = QTreeWidgetItem(['Photo', ''])
                 item.setTextAlignment(0, Qt.AlignCenter)
-                icon = self.get_icon(image)
+                icon = self.get_icon(image_path)
                 item.setIcon(1, icon)
                 self.tree_widget.setIconSize(QSize(50, 50))
                 self.tree_widget.addTopLevelItem(item)
