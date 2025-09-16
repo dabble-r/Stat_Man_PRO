@@ -16,8 +16,52 @@ class FileDialog(QWidget):
         self.parent = parent
         self.file_path = None
         self.flag = flag
+        self.db_path = None 
+        self.csv_path = None
 
-    # deprecated
+    def open_dual_file_dialog(self):
+        print("Opening dual file dialog...")
+
+        # --- Select SQLite DB File ---
+        db_filter = "SQLite Database (*.db);;All Files (*.*)"
+        db_file, _ = QFileDialog.getOpenFileName(
+            parent=self.parent,
+            caption="Select SQLite Database File",
+            dir=self.file_dir,
+            filter=db_filter
+        )
+
+        if not db_file:
+            print("No database file selected.")
+            self.message.show_message("No database file selected!")
+            return
+
+        # --- Select CSV File ---
+        csv_filter = "CSV Files (*.csv);;All Files (*.*)"
+        csv_file, _ = QFileDialog.getOpenFileName(
+            parent=self.parent,
+            caption="Select CSV File",
+            dir=self.file_dir,
+            filter=csv_filter
+        )
+
+        if not csv_file:
+            print("No CSV file selected.")
+            self.message.show_message("No CSV file selected!")
+            return
+
+        # --- Validate and Store Paths ---
+        try:
+            if os.path.isfile(db_file) and os.path.isfile(csv_file):
+                self.db_file_path = db_file
+                self.csv_file_path = csv_file
+                print(f"Selected DB file: {db_file}")
+                print(f"Selected CSV file: {csv_file}")
+            else:
+                raise FileNotFoundError("One or both selected files are invalid.")
+        except Exception as e:
+            self.message.show_message(f"Error:\n{e}")
+   
     def open_file_dialog(self):
         print("open dialog")
         filter_str = None
@@ -74,6 +118,12 @@ class FileDialog(QWidget):
     
     def get_file_path(self):
         return self.file_path
+    
+    def get_db_path(self):
+        return self.db_path
+    
+    def get_csv_path(self):
+        return self.csv_path
         
     
    

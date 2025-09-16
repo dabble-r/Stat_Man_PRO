@@ -40,7 +40,7 @@ class LeagueViewPlayers(QWidget):
         self.undo = undo
         self.file_dir = file_dir
         self.db_path = None
-        self.csv_path = f"{self.file_dir}/Saved/CSV"
+        self.csv_path = None
         self.message = message
         self.parent = parent
 
@@ -199,7 +199,8 @@ class LeagueViewPlayers(QWidget):
         self.load_ui.setupUi(self.load_widget)
 
         self.load_widget.exec()'''
-        load = Load(self.db_path, self.csv_path, self.league, self.message, self.file_dir, parent=self, flag='load')
+
+        load = Load(self.league, self.message, self.file_dir, parent=self, flag='load')
         load.load_master()
 
     def get_rand(self):

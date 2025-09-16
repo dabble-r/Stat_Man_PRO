@@ -11,13 +11,12 @@ class Save():
     self.db = db
     self.file_dir = file_dir 
     self.folder = folder
-    self.openDB = self.open_db()
-    self.con = self.get_con()
-    self.cur = self.get_cur()
+    #self.openDB = self.open_db()
+    #self.con = self.get_con()
+    #self.cur = self.get_cur()
     self.league = league
     self.message = message
     
-  
   def db_exists(self):
     db_path = Path(self.db)
     db_uri = f"file:{db_path}?mode=rw"
@@ -30,15 +29,46 @@ class Save():
         return None
 
   def open_db(self):
+    result = self.db_exists()
+    if result:
+        return result  # con, cur
+
+    # Ensure parent directory exists before creating new DB
+    db_path = Path(self.db)
+    db_dir = db_path.parent
+    if not db_dir.exists():
+        print(f"Creating missing directory: {db_dir}")
+        db_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create new database
+    print(f"Creating new database at: {db_path}")
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    return con, cur
+
+  
+  '''def db_exists(self):
+    db_path = Path(self.db)
+    db_uri = f"file:{db_path}?mode=rw"
+    #print(db_uri)
+    try:
+        con = sqlite3.connect(db_uri, uri=True, timeout=60)
+        cur = con.cursor()
+        return con, cur
+    except sqlite3.OperationalError:
+        print(f"Database '{db_path}' does not exist!")
+        return None'''
+
+  '''def open_db(self):
     # Connect and insert
     
     if self.db_exists() is not None:
       con, cur = self.db_exists()
       return con, cur
-    
+  
     con = sqlite3.connect(self.db)
     cur = con.cursor()
-    return con, cur
+    return con, cur'''
   
   def get_con(self):
     try: 

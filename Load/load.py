@@ -22,12 +22,10 @@ from Files.file_dialog import FileDialog
 # overwrite / update team/player/pitcher as user request
 
 
-
-
 class Load():
-  def __init__(self, db_path, csv_path, league, message, file_dir, parent=None, flag=None):
-    self.db_path = db_path
-    self.csv_path = csv_path
+  def __init__(self, league, message, file_dir, parent=None, flag=None):
+    self.db_path = None
+    self.csv_path = None
     self.file_dir = file_dir
     self.league = league
     self.message = message
@@ -37,7 +35,6 @@ class Load():
     #self.con = self.get_con()
     #self.cur = self.get_cur()
     
-  
   def db_exists(self):
     db_path = Path(self.db_path)
     db_uri = f"file:{db_path}?mode=rw"
@@ -778,9 +775,9 @@ class Load():
   # program should use pre exisitng new db init if no db exists 
     # cols definitions and data types will clash / unnecessary
 
-  def import_csv_to_sqlite(self, con, cur):
-    #con = sqlite3.connect(self.db_path)
-    #cur = con.cursor()
+  def import_csv_to_sqlite(self):
+    con = sqlite3.connect(self.db_path)
+    cur = con.cursor()
 
     with open(self.csv_path, "r") as f:   
         # Create a csv reader object
@@ -796,17 +793,18 @@ class Load():
     con.close()
 
   def load_master(self):
+    # open file dialog 
+    # choose csv file 
+      # init new db 
+      # update with data from csv
+      
+      # merge csv data with existing db
     dialog = FileDialog(self.message, self.parent, self.flag)
-    dialog.open_file_dialog()
+    dialog.open_dual_file_dialog()
+    self.db_path = dialog.get_db_path()
+    self.csv_path = dialog.get_csv_path()
+    print(self.csv_path)
+    print(self.db_path)
 
-    '''con, cur = self.open_db()
-
-    res = cur.execute("SELECT name from sqlite_master where type='table'")
-    ret = [row[0] for row in res.fetchall()]
-
-    if len(ret) == 0:
-      print('no tables exist - init league')
-      self.init_new_db()
-    
-    self.import_csv_to_sqlite(con, cur)'''
+    #self.import_csv_to_sqlite()
 

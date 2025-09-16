@@ -10,8 +10,8 @@ class Ui_SaveDialog:
         self.message = message
         self.file_dir = file_dir
         self.parent = parent
-        self.db = f'{self.league.name}.db' if self.league.name else f'db_{self.rand}.db'
         self.rand = random.randint(1, 1000)
+        self.db = f"{self.file_dir}/DB/{self.league.name}.db" if self.league.name else f'{self.file_dir}/DB/db_{self.rand}.db'
         self.setupUi(parent)
 
     def setupUi(self, SaveDialog: QDialog):
