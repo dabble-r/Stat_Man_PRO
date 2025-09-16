@@ -128,7 +128,7 @@ class UpdateDialog(QDialog):
         # call Icon method to create icon 
         # set team icon to icon object 
         # set icon to stat and update dialogs ? 
-        dialog = FileDialog(self.message, self)
+        dialog = FileDialog(self.message, parent=self, flag='save')
         dialog.open_file_dialog()
         file_path = dialog.get_file_path()
         ##print('file path:', file_path)

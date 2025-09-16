@@ -3,23 +3,43 @@ import os
 import sqlite3 
 import json
 from pathlib import Path
-import random
+from Files.file_dialog import FileDialog
+
+# get csv name 
+# get csv file path 
+# check if csv file exists at file path
 
 
-class Save():
-  def __init__(self, db, league, message, file_dir, folder='/CSV'):
-    self.db = db
-    self.file_dir = file_dir 
-    self.folder = folder
-    self.openDB = self.open_db()
-    self.con = self.get_con()
-    self.cur = self.get_cur()
+# get db name 
+# get db file path 
+# check if db exists 
+  # if db exists, user dialog prompt 
+    # overwrite teams, players, pitchers ?
+    # update data ?
+
+# get ALL table names 
+# iterate over each table 
+# overwrite / update team/player/pitcher as user request
+
+
+
+
+class Load():
+  def __init__(self, db_path, csv_path, league, message, file_dir, parent=None, flag=None):
+    self.db_path = db_path
+    self.csv_path = csv_path
+    self.file_dir = file_dir
     self.league = league
     self.message = message
+    self.parent = parent
+    self.flag = flag
+    #self.openDB = self.open_db()
+    #self.con = self.get_con()
+    #self.cur = self.get_cur()
     
   
   def db_exists(self):
-    db_path = Path(self.db)
+    db_path = Path(self.db_path)
     db_uri = f"file:{db_path}?mode=rw"
     try:
         con = sqlite3.connect(db_uri, uri=True, timeout=60)
@@ -751,51 +771,35 @@ class Save():
   def sql_safe(self, val):
     return isinstance(val, (type(None), int, float, str))
 
-  def save_csv(self, file_name="league_db"):
-    con, cur = self.open_db()
+                    # -------------------------------------------------------------------------------- #
 
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = [row[0] for row in cur.fetchall()]
-    
-    # Ensure the directory exists
-    os.makedirs(f"{self.file_dir}/CSV", exist_ok=True)
-    rand = str(random.randint(1, 1000))
+  # import csv table/field per table
+  # this will not work 
+  # program should use pre exisitng new db init if no db exists 
+    # cols definitions and data types will clash / unnecessary
 
-    for table in tables:
-        cur.execute(f"SELECT * FROM {table}")
-        rows = cur.fetchall()
+  def import_csv_to_sqlite(self, con, cur):
+    #con = sqlite3.connect(self.db_path)
+    #cur = con.cursor()
 
-        column_names = [description[0] for description in cur.description]
+    with open(self.csv_path, "r") as f:   
+        # Create a csv reader object
+        reader = csv.reader(f)
 
-        file_name = f"{table}.csv"
-        file_path = os.path.join(f"{self.file_dir}/{self.folder}", file_name)
-        
-        if self.isPathExist(file_path):
-          file_name = self.rand_file_name(table, rand)
-          file_path = self.upd_file_path(self.file_dir, self.folder, file_name)
+        # Skip the header row
+        next(reader)
 
-        with open(file_path, "w", newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(column_names)
-            writer.writerows(rows)
+        # Insert each row into the table
+        for row in reader:
+            print(row)
 
     con.close()
-  
-  def isPathExist(self, file_path):
-    if os.path.exists(file_path):
-      return True 
-    return False
-  
-  def rand_file_name(self, table, rand):
-    file_name = f"{table}_{rand}.csv"
-    return file_name 
-  
-  def upd_file_path(self, file_dir, folder, file_name):
-    file_path = os.path.join(f"{file_dir}/{folder}", file_name)
-    return file_path
 
-  def save_master(self):
-    con, cur = self.open_db()
+  def load_master(self):
+    dialog = FileDialog(self.message, self.parent, self.flag)
+    dialog.open_file_dialog()
+
+    '''con, cur = self.open_db()
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
     ret = [row[0] for row in res.fetchall()]
@@ -804,12 +808,5 @@ class Save():
       print('no tables exist - init league')
       self.init_new_db()
     
-    #print('update team/player/pitcher fields')
-    self.save_team()
-    self.save_player()
-
-    self.save_csv()
-
-    con.commit()
-    con.close()
+    self.import_csv_to_sqlite(con, cur)'''
 

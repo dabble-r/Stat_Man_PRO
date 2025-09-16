@@ -3,6 +3,7 @@ demo/
 TabWidget/ 
 Icon/ 
 Images/
+Saved/
 *.txt
 *.db
 *.csv

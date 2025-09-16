@@ -259,7 +259,7 @@ class Ui_NewTeam(QWidget, object):
         # set icon to stat and update dialogs ? 
         self.logo = None 
         self.file_path = None
-        dialog = FileDialog(self.message, self)
+        dialog = FileDialog(self.message, parent=self, flag='save')
         dialog.open_file_dialog()
         self.file_path = dialog.get_file_path()
         #print('file_path team_img:', file_path)

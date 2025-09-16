@@ -5,7 +5,7 @@ import sys
 import platform
 
 class FileDialog(QWidget):
-    def __init__(self, message, parent=None):
+    def __init__(self, message, parent=None, flag=None):
         super().__init__()
         self.setWindowTitle("File Dialog Example")
         self.setGeometry(100, 100, 400, 200)
@@ -15,15 +15,22 @@ class FileDialog(QWidget):
         self.message = message
         self.parent = parent
         self.file_path = None
+        self.flag = flag
 
     # deprecated
     def open_file_dialog(self):
         print("open dialog")
+        filter_str = None
+        if self.flag == 'save':
+            filter_str = "Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)"
+        elif self.flag == 'load':
+            filter_str = "CSV Files (*.csv);;All Files (*.*)"
         filename, _ = QFileDialog.getOpenFileName(
             parent=self.parent,
             caption="Select a file",
             dir=f"{self.file_dir}",  # Initial directory
-            filter="Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)" # File filters
+            #filter="Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)" # File filters
+            filter = filter_str
         )
         if filename:
             print(f"Selected file: {filename}")
@@ -44,14 +51,14 @@ class FileDialog(QWidget):
     def get_file_dir(self):
         if self.os_type == 'Windows':
             print('Windows')
-            new_dir = os.path.join(self.cwd, "Images")
+            new_dir = os.path.join(self.cwd, "Saved")
             if not os.path.exists(new_dir):
                 os.mkdir(new_dir)
             return new_dir
 
         elif self.os_type == 'Linux':
             print('Linux')
-            new_dir = f"{self.cwd}/Images"
+            new_dir = f"{self.cwd}/Saved"
             isExist = os.path.exists(new_dir)
             if not isExist:
                 os.mkdir(new_dir)

@@ -361,7 +361,7 @@ class Ui_NewPlayer(QWidget, object):
         # set icon to stat and update dialogs ? 
         self.image = None
         self.file_path = None
-        dialog = FileDialog(self.message, parent=self.parent)
+        dialog = FileDialog(self.message, parent=self.parent, flag='save')
         dialog.open_file_dialog()
         self.file_path = dialog.get_file_path()
         #print('file path:', file_path)
