@@ -3,6 +3,7 @@ from PySide6.QtCore import QMetaObject
 from Save.save import Save 
 import math 
 import random
+import os
 
 class Ui_SaveDialog:
     def __init__(self, league, message, file_dir, parent: QDialog):
@@ -53,8 +54,9 @@ class Ui_SaveDialog:
 
     def button_ok_handler(self):
         print(f"Saving progress for league: {self.league.name}")
+       
         save = Save(self.db, self.league, self.message, self.file_dir)
-        save.save_master()
+        save.save_master_complete(self.db, f"{self.file_dir}/CSV", output_path="master_export.csv")
 
         self.parent.accept()
         
@@ -62,3 +64,4 @@ class Ui_SaveDialog:
         print("Save canceled.")
         self.parent.reject()
     
+   

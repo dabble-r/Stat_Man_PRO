@@ -57,6 +57,7 @@ class FileDialog(QWidget):
                 self.csv_file_path = csv_file
                 print(f"Selected DB file: {db_file}")
                 print(f"Selected CSV file: {csv_file}")
+                return db_file, csv_file
             else:
                 raise FileNotFoundError("One or both selected files are invalid.")
         except Exception as e:

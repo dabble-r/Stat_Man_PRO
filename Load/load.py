@@ -24,8 +24,9 @@ from Files.file_dialog import FileDialog
 
 class Load():
   def __init__(self, league, message, file_dir, parent=None, flag=None):
-    self.db_path = None
-    self.csv_path = None
+    #self.db_path = None
+    #self.csv_path = None
+    self.csv_paths = []
     self.file_dir = file_dir
     self.league = league
     self.message = message
@@ -775,20 +776,20 @@ class Load():
   # program should use pre exisitng new db init if no db exists 
     # cols definitions and data types will clash / unnecessary
 
-  def import_csv_to_sqlite(self):
-    con = sqlite3.connect(self.db_path)
+  def import_csv_to_sqlite(self, db_path, path):
+    print('db path - import csv', db_path)
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
 
-    with open(self.csv_path, "r") as f:   
+    tables = []
+    with open(path, "r") as f:   
         # Create a csv reader object
         reader = csv.reader(f)
-
-        # Skip the header row
-        next(reader)
+        header = next(reader)
 
         # Insert each row into the table
         for row in reader:
-            print(row)
+          tables.append(row)
 
     con.close()
 
@@ -800,11 +801,20 @@ class Load():
       
       # merge csv data with existing db
     dialog = FileDialog(self.message, self.parent, self.flag)
-    dialog.open_dual_file_dialog()
-    self.db_path = dialog.get_db_path()
-    self.csv_path = dialog.get_csv_path()
-    print(self.csv_path)
-    print(self.db_path)
+    db_path, csv_path = dialog.open_dual_file_dialog()
+    
+    self.append_csv_path(csv_path)
 
-    #self.import_csv_to_sqlite()
+    print('csv load master', csv_path)
+    print('db load master', db_path)
+
+    self.load_mul_csv(db_path)
+
+  def append_csv_path(self, path):
+    self.csv_paths.append(path)
+  
+  def load_mul_csv(self, db_path):
+    for path in self.csv_paths:
+      self.import_csv_to_sqlite(db_path, path)
+   
 

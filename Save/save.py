@@ -842,4 +842,80 @@ class Save():
 
     con.commit()
     con.close()
+  
+  def parse_json(self, raw, fallback=None):
+    try:
+        return json.loads(raw) if raw else fallback
+    except (json.JSONDecodeError, TypeError):
+        return fallback
 
+  def format_row(self, table_name, row, headers):
+    row = list(row)
+
+    if table_name == "team":
+        for field in ["players", "lineup", "positions"]:
+            if field in headers:
+                idx = headers.index(field)
+                parsed = self.parse_json(row[idx], [] if field == "players" else {})
+                if isinstance(parsed, list):
+                    row[idx] = ", ".join(parsed)
+                elif isinstance(parsed, dict):
+                    row[idx] = "; ".join(f"{k}: {v}" for k, v in parsed.items())
+                else:
+                    row[idx] = "Invalid"
+
+    elif table_name == "player":
+        if "positions" in headers:
+            idx = headers.index("positions")
+            parsed = self.parse_json(row[idx], [])
+            row[idx] = ", ".join(parsed) if isinstance(parsed, list) else "Invalid"
+
+    return row
+
+  def save_master_complete(self, db_path, file_dir, output_path):
+      con = sqlite3.connect(db_path)
+      cur = con.cursor()
+
+      
+      if os.path.exists(output_path):
+        rand = str(self.get_rand())
+        output_path = os.path.join(file_dir, f"{rand}_{output_path}")
+
+
+      # Get all table names
+      cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+      tables = [row[0] for row in cur.fetchall()]
+
+      with open(output_path, "w", newline='', encoding="utf-8") as f:
+          writer = csv.writer(f)
+          header_written = False
+
+          for table_name in tables:
+              try:
+                  cur.execute(f"SELECT * FROM {table_name}")
+                  rows = cur.fetchall()
+                  headers = [desc[0] for desc in cur.description]
+
+                  # Add source_table column
+                  extended_headers = headers + ["source_table"]
+                  if not header_written:
+                      writer.writerow(extended_headers)
+                      header_written = True
+
+                  for row in rows:
+                      formatted = self.format_row(table_name, row, headers)
+                      formatted.append(table_name)
+                      writer.writerow(formatted)
+
+                  print(f"✅ Added {table_name} ({len(rows)} rows)")
+
+              except sqlite3.Error as e:
+                  print(f"⚠️ Skipped {table_name}: {e}")
+
+      cur.close()
+      con.close()
+
+  def get_rand(self):
+        rand = str(random.randint(1, 1000))
+        return rand
+    
