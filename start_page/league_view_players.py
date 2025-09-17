@@ -27,6 +27,7 @@ from remove.remove import RemoveDialog
 
 from Save.save_dialog_ui import Ui_SaveDialog
 from Load.load_dialog_ui import Load
+from Files.file_dialog import FileDialog
 import random
 
 
@@ -39,7 +40,7 @@ class LeagueViewPlayers(QWidget):
         #self.setStyleSheet(self.styles.modern_styles)
         self.undo = undo
         self.file_dir = file_dir
-        self.db_path = None
+        self.db_path = f"{self.file_dir}/DB"
         self.csv_path = None
         self.message = message
         self.parent = parent
@@ -193,14 +194,14 @@ class LeagueViewPlayers(QWidget):
         '''self.load_widget = QDialog(self.parent)
         self.load_widget.setWindowTitle("Load Progress")
         self.load_widget.setModal(True)
-
         # Just instantiate and call setupUi once
         self.load_ui = Ui_LoadDialog(self.league, self.message, self.file_dir, self.load_widget)
         self.load_ui.setupUi(self.load_widget)
-
         self.load_widget.exec()'''
+        file = FileDialog(self.message, parent=self, flag="load")
+        db_path, csv_path = file.open_dual_file_dialog()
 
-        load = Load(self.league, self.message, self.file_dir, parent=self, flag='load')
+        load = Load(self.league, self.message, self.file_dir, db_path=db_path, csv_path=csv_path, parent=self)
         load.load_master()
 
     def get_rand(self):

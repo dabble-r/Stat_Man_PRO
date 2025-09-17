@@ -824,6 +824,7 @@ class Save():
     file_path = os.path.join(f"{file_dir}/{folder}", file_name)
     return file_path
 
+  # not currently in use
   def save_master(self):
     con, cur = self.open_db()
 
@@ -872,16 +873,15 @@ class Save():
 
     return row
 
-  def save_master_complete(self, db_path, file_dir, output_path):
+  def save_master_complete(self, db_path, file_dir, output_file):
       con = sqlite3.connect(db_path)
       cur = con.cursor()
 
-      
+      output_path = os.path.join(file_dir, output_file)
       if os.path.exists(output_path):
-        rand = str(self.get_rand())
-        output_path = os.path.join(file_dir, f"{rand}_{output_path}")
-
-
+        rand = random.randint(0, 1000)
+        output_path = os.path.join(file_dir, f"{output_file}({rand})")
+        
       # Get all table names
       cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
       tables = [row[0] for row in cur.fetchall()]
@@ -898,6 +898,7 @@ class Save():
 
                   # Add source_table column
                   extended_headers = headers + ["source_table"]
+                  print('ext headers:', extended_headers)
                   if not header_written:
                       writer.writerow(extended_headers)
                       header_written = True

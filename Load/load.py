@@ -23,18 +23,14 @@ from Files.file_dialog import FileDialog
 
 
 class Load():
-  def __init__(self, league, message, file_dir, parent=None, flag=None):
-    #self.db_path = None
-    #self.csv_path = None
-    self.csv_paths = []
+  def __init__(self, league, message, file_dir, db_path=None, csv_path=None, parent=None):
+    
     self.file_dir = file_dir
     self.league = league
     self.message = message
     self.parent = parent
-    self.flag = flag
-    #self.openDB = self.open_db()
-    #self.con = self.get_con()
-    #self.cur = self.get_cur()
+    self.db_path = db_path
+    self.csv_path = csv_path
     
   def db_exists(self):
     db_path = Path(self.db_path)
@@ -793,28 +789,142 @@ class Load():
 
     con.close()
 
+                           # -------------------------------------------------------------------------------- #
+
   def load_master(self):
-    # open file dialog 
-    # choose csv file 
-      # init new db 
-      # update with data from csv
-      
-      # merge csv data with existing db
-    dialog = FileDialog(self.message, self.parent, self.flag)
-    db_path, csv_path = dialog.open_dual_file_dialog()
+  
+    #dialog = FileDialog(self.message, self.parent, self.flag)
+    #csv_path = dialog.open_dual_file_dialog()
+
+    #self.db_path = db_path
+    #self.csv_path = csv_path
+
+    self.upsert_team_from_csv(self.csv_path)
+    self.upsert_player_from_csv(self.csv_path)
+
+                        # ------------------------------------------------------------------------------------ #
     
-    self.append_csv_path(csv_path)
-
-    print('csv load master', csv_path)
-    print('db load master', db_path)
-
-    self.load_mul_csv(db_path)
-
   def append_csv_path(self, path):
     self.csv_paths.append(path)
   
   def load_mul_csv(self, db_path):
     for path in self.csv_paths:
       self.import_csv_to_sqlite(db_path, path)
+
+
+
+  # experimental - upsert team
+  def upsert_team_from_csv(self, csv_path):
+    import csv
+    import json
+
+    con, cur = self.open_db()
+
+    with open(csv_path, newline='', encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            if row.get("source_table") != "team":
+                continue
+
+            teamID = row.get("teamID")
+            team_name = row.get("name")
+
+            # Parse JSON fields
+            for field in ["players", "lineup", "positions"]:
+                raw = row.get(field, "")
+                try:
+                    parsed = json.loads(raw) if raw else []
+                    row[field] = json.dumps(parsed)
+                except json.JSONDecodeError:
+                    row[field] = json.dumps([])
+
+            # Check if team exists
+            cur.execute("SELECT teamID FROM team WHERE teamID = ?", (teamID,))
+            exists = cur.fetchone()
+
+            if exists:
+                response = self.message.show_message(f"Would you like to overwrite {team_name} stats?")
+                if response.lower() != "yes":
+                    continue
+
+                update_fields = [f"{k}=?" for k in row if k != "teamID" and k != "source_table"]
+                update_sql = f"UPDATE team SET {', '.join(update_fields)} WHERE teamID = ?"
+                values = [row[k] for k in row if k != "teamID" and k != "source_table"] + [teamID]
+                cur.execute(update_sql, values)
+            else:
+                insert_fields = [k for k in row if k != "source_table"]
+                insert_sql = f"INSERT INTO team ({', '.join(insert_fields)}) VALUES ({', '.join(['?' for _ in insert_fields])})"
+                values = [row[k] for k in insert_fields]
+                cur.execute(insert_sql, values)
+
+    con.commit()
+    cur.close()
+    con.close()
+
+  # experimental - player/pitcher load
+  def upsert_player_from_csv(self, csv_path):
+    import csv
+    import json
+
+    con, cur = self.open_db()
+
+    with open(csv_path, newline='', encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            if row.get("source_table") != "player":
+                continue
+
+            playerID = row.get("playerID")
+            player_name = row.get("name")
+
+            # Parse positions
+            raw_positions = row.get("positions", "")
+            try:
+                positions_list = json.loads(raw_positions)
+                row["positions"] = json.dumps(positions_list)
+            except json.JSONDecodeError:
+                positions_list = []
+                row["positions"] = json.dumps([])
+
+            # Check if player exists
+            cur.execute("SELECT playerID FROM player WHERE playerID = ?", (playerID,))
+            exists = cur.fetchone()
+
+            if exists:
+                response = self.message.show_message(f"Would you like to overwrite {player_name}?")
+                if response.lower() == "yes":
+                    update_fields = [f"{k}=?" for k in row if k != "playerID" and k != "source_table"]
+                    update_sql = f"UPDATE player SET {', '.join(update_fields)} WHERE playerID = ?"
+                    values = [row[k] for k in row if k != "playerID" and k != "source_table"] + [playerID]
+                    cur.execute(update_sql, values)
+            else:
+                insert_fields = [k for k in row if k != "source_table"]
+                insert_sql = f"INSERT INTO player ({', '.join(insert_fields)}) VALUES ({', '.join(['?' for _ in insert_fields])})"
+                values = [row[k] for k in insert_fields]
+                cur.execute(insert_sql, values)
+
+            # Handle pitcher if applicable
+            if "pitcher" in positions_list:
+                cur.execute("SELECT playerID FROM pitcher WHERE playerID = ?", (playerID,))
+                pitcher_exists = cur.fetchone()
+
+                if pitcher_exists:
+                    response = self.message.show_message(f"Would you like to overwrite {player_name} pitching stats?")
+                    if response.lower() == "yes":
+                        pitcher_fields = [k for k in row if k in self.pitcher_schema and k != "playerID"]
+                        update_sql = f"UPDATE pitcher SET {', '.join([f'{k}=?' for k in pitcher_fields])} WHERE playerID = ?"
+                        values = [row[k] for k in pitcher_fields] + [playerID]
+                        cur.execute(update_sql, values)
+                else:
+                    pitcher_fields = [k for k in row if k in self.pitcher_schema]
+                    insert_sql = f"INSERT INTO pitcher ({', '.join(pitcher_fields)}) VALUES ({', '.join(['?' for _ in pitcher_fields])})"
+                    values = [row[k] for k in pitcher_fields]
+                    cur.execute(insert_sql, values)
+
+    con.commit()
+    cur.close()
+    con.close()
    
 

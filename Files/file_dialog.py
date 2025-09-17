@@ -33,8 +33,9 @@ class FileDialog(QWidget):
 
         if not db_file:
             print("No database file selected.")
-            self.message.show_message("No database file selected!")
-            return
+            self.message.show_message("No database file selected!\nCreating new database!")
+            db_file = None
+            
 
         # --- Select CSV File ---
         csv_filter = "CSV Files (*.csv);;All Files (*.*)"
@@ -47,13 +48,13 @@ class FileDialog(QWidget):
 
         if not csv_file:
             print("No CSV file selected.")
-            self.message.show_message("No CSV file selected!")
+            self.message.show_message("No CSV file selected! No data imported!")
             return
 
         # --- Validate and Store Paths ---
         try:
-            if os.path.isfile(db_file) and os.path.isfile(csv_file):
-                self.db_file_path = db_file
+            if os.path.isfile(csv_file):
+                self.db_file_path = db_file if db_file is not None else f"{self.file_dir}/Saved/DB/League.db"
                 self.csv_file_path = csv_file
                 print(f"Selected DB file: {db_file}")
                 print(f"Selected CSV file: {csv_file}")
