@@ -11,7 +11,7 @@ A Python application to track and manage statistics for baseball leagues.
 - Add and update player stats
 - view top teams by batting average
 - View top players by batting average
-- Visualize player and team progress sa graphs
+- Visualize player and team progress via graphs
 - Export or view league statistics as .csv files
 
 ---
