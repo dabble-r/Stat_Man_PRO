@@ -56,7 +56,7 @@ class Ui_SaveDialog:
         print(f"Saving progress for league: {self.league.name}")
        
         save = Save(self.db, self.league, self.message, self.file_dir)
-        save.save_master_complete(self.db, f"{self.file_dir}/CSV", output_file="master_export.csv")
+        save.save_master(self.db, f"{self.file_dir}/CSV", "master_export.csv")
 
         self.parent.accept()
         

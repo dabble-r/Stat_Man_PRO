@@ -198,7 +198,7 @@ class LeagueViewPlayers(QWidget):
         self.load_ui = Ui_LoadDialog(self.league, self.message, self.file_dir, self.load_widget)
         self.load_ui.setupUi(self.load_widget)
         self.load_widget.exec()'''
-        file = FileDialog(self.message, parent=self, flag="load")
+        file = FileDialog(self.message, parent=self.parent, flag="load")
         db_path, csv_path = file.open_dual_file_dialog()
 
         load = Load(self.league, self.message, self.file_dir, db_path=db_path, csv_path=csv_path, parent=self)

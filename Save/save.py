@@ -4,6 +4,11 @@ import sqlite3
 import json
 from pathlib import Path
 import random
+import glob
+from PySide6.QtWidgets import (
+    QApplication, QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+)
+
 
 
 class Save():
@@ -16,6 +21,7 @@ class Save():
     #self.cur = self.get_cur()
     self.league = league
     self.message = message
+    self.NULL_TOKEN = "__SQL_NULL__"
     
   def db_exists(self):
     db_path = Path(self.db)
@@ -781,8 +787,18 @@ class Save():
   def sql_safe(self, val):
     return isinstance(val, (type(None), int, float, str))
 
-  def save_csv(self, file_name="league_db"):
-    con, cur = self.open_db()
+  def save_csv(self, db_path, csv_path, output_file):
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+
+    # ensure .csv extension
+    if not output_file.lower().endswith(".csv"):
+        output_file = output_file + ".csv"
+    output_path = os.path.join(csv_path, output_file)
+    if os.path.exists(output_path):
+        rand = random.randint(0, 100000)
+        base, ext = os.path.splitext(output_path)
+        output_path = f"{base}({rand}){ext}"
 
     cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = [row[0] for row in cur.fetchall()]
@@ -825,7 +841,7 @@ class Save():
     return file_path
 
   # not currently in use
-  def save_master(self):
+  def save_master(self, db_path, csv_path, output_file):
     con, cur = self.open_db()
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
@@ -839,7 +855,7 @@ class Save():
     self.save_team()
     self.save_player()
 
-    self.save_csv()
+    self.save_csv(db_path, csv_path, output_file)
 
     con.commit()
     con.close()
@@ -873,7 +889,8 @@ class Save():
 
     return row
 
-  def save_master_complete(self, db_path, file_dir, output_file):
+  # deprecated
+  def save_master_complete_1(self, db_path, file_dir, output_file):
       con = sqlite3.connect(db_path)
       cur = con.cursor()
 
@@ -885,6 +902,11 @@ class Save():
       # Get all table names
       cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
       tables = [row[0] for row in cur.fetchall()]
+      #print('save tables:', tables)
+      if len(tables) == 0:  
+        self.message.show_message("No Database found!")
+        self.init_new_db()
+        return
 
       with open(output_path, "w", newline='', encoding="utf-8") as f:
           writer = csv.writer(f)
@@ -894,6 +916,7 @@ class Save():
               try:
                   cur.execute(f"SELECT * FROM {table_name}")
                   rows = cur.fetchall()
+                  print('save rows:', rows)
                   headers = [desc[0] for desc in cur.description]
 
                   # Add source_table column
@@ -904,6 +927,7 @@ class Save():
                       header_written = True
 
                   for row in rows:
+                      print('save complete:', row)
                       formatted = self.format_row(table_name, row, headers)
                       formatted.append(table_name)
                       writer.writerow(formatted)
@@ -915,6 +939,121 @@ class Save():
 
       cur.close()
       con.close()
+
+  def save_master_complete_2(self, db_path, file_dir, output_file):
+      """Export all user tables in db_path to a single master CSV placed at file_dir/output_file.
+        The CSV header is: source_table, <union of all columns...>
+        NULLs are written as the sentinel defined in NULL_TOKEN.
+      """
+      con = sqlite3.connect(db_path)
+      cur = con.cursor()
+
+      # ensure .csv extension
+      if not output_file.lower().endswith(".csv"):
+          output_file = output_file + ".csv"
+      output_path = os.path.join(file_dir, output_file)
+      if os.path.exists(output_path):
+          rand = random.randint(0, 100000)
+          base, ext = os.path.splitext(output_path)
+          output_path = f"{base}({rand}){ext}"
+
+      # get user-defined tables (exclude sqlite internal tables)
+      cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      tables = [row[0] for row in cur.fetchall()]
+      if not tables:
+          # keep your error handling flow
+          # e.g. self.message.show_message("No Database found!")
+          #       self.init_new_db()
+          cur.close()
+          con.close()
+          raise RuntimeError("No user tables found in database.")
+
+      # collect columns for each table and build master column order (first-seen)
+      master_columns = []
+      table_columns = {}
+      for table in tables:
+          cur.execute(f"PRAGMA table_info({table})")
+          cols = [r[1] for r in cur.fetchall()]  # r[1] == column name
+          table_columns[table] = cols
+          for c in cols:
+              if c not in master_columns:
+                  master_columns.append(c)
+
+      # header: source_table first (makes parsing easier), then master columns
+      headers = ["source_table"] + master_columns
+
+      with open(output_path, "w", newline="", encoding="utf-8") as f:
+          writer = csv.writer(f)
+          writer.writerow(headers)
+
+          for table in tables:
+              cols = table_columns[table]
+              # fetch all rows for this table
+              cur.execute(f"SELECT * FROM {table}")
+              rows = cur.fetchall()
+
+              for row in rows:
+                  # map this table's columns to values
+                  row_dict = dict(zip(cols, row))
+                  out_row = [table]
+                  for col in master_columns:
+                      val = row_dict.get(col, None)
+                      # write the NULL sentinel if value was actually NULL/None
+                      out_row.append(self.NULL_TOKEN if val is None else val)
+                  writer.writerow(out_row)
+
+      cur.close()
+      con.close()
+      return output_path  # useful to know where it saved
+
+  def save_master_complete_3(self, db_path, csv_path, output_file):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+     # ensure .csv extension
+    if not output_file.lower().endswith(".csv"):
+        output_file = output_file + ".csv"
+    output_path = os.path.join(csv_path, output_file)
+    if os.path.exists(output_path):
+        rand = random.randint(0, 100000)
+        base, ext = os.path.splitext(output_path)
+        output_path = f"{base}({rand}){ext}"
+    
+    res = cur.execute("SELECT name from sqlite_master where type='table'")
+    ret = [row[0] for row in res.fetchall()]
+
+    if len(ret) == 0:
+      print('no tables exist - init league')
+      self.init_new_db()
+    
+    self.save_team()
+    self.save_player()
+
+    tables = ["league", "team", "player", "pitcher"]
+
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        for table in tables:
+            # Write table marker
+            writer.writerow(["TABLE", table])
+
+            # Get column info
+            cur.execute(f"PRAGMA table_info({table})")
+            columns_info = cur.fetchall()  # (cid, name, type, notnull, dflt_value, pk)
+            columns = [f"{col[1]}:{col[2]}" for col in columns_info]
+            writer.writerow(["COLUMNS"] + columns)
+
+            # Write data
+            cur.execute(f"SELECT * FROM {table}")
+            rows = cur.fetchall()
+            for row in rows:
+                writer.writerow(["DATA"] + list(row))
+
+            # Add a blank line for readability
+            writer.writerow([])
+
+    conn.close()
 
   def get_rand(self):
         rand = str(random.randint(1, 1000))

@@ -4,6 +4,11 @@ import sqlite3
 import json
 from pathlib import Path
 from Files.file_dialog import FileDialog
+from PySide6.QtWidgets import QMessageBox
+from League.linked_list import LinkedList 
+from League.team import Team 
+from League.player import Player, Pitcher
+
 
 # get csv name 
 # get csv file path 
@@ -31,6 +36,11 @@ class Load():
     self.parent = parent
     self.db_path = db_path
     self.csv_path = csv_path
+
+    # init league, team, player/pitcher instances
+    self.league = None 
+    self.teams = [] 
+    self.players = []
     
   def db_exists(self):
     db_path = Path(self.db_path)
@@ -767,11 +777,11 @@ class Load():
 
                     # -------------------------------------------------------------------------------- #
 
+  # deprecated
   # import csv table/field per table
   # this will not work 
   # program should use pre exisitng new db init if no db exists 
     # cols definitions and data types will clash / unnecessary
-
   def import_csv_to_sqlite(self, db_path, path):
     print('db path - import csv', db_path)
     con = sqlite3.connect(db_path)
@@ -792,39 +802,64 @@ class Load():
                            # -------------------------------------------------------------------------------- #
 
   def load_master(self):
-  
-    #dialog = FileDialog(self.message, self.parent, self.flag)
-    #csv_path = dialog.open_dual_file_dialog()
-
     #self.db_path = db_path
     #self.csv_path = csv_path
 
-    self.upsert_team_from_csv(self.csv_path)
-    self.upsert_player_from_csv(self.csv_path)
+    #self.upsert_team_from_csv(self.csv_path)
+    #self.upsert_player_from_csv(self.csv_path)
+
+    self.upsert_test(self.csv_path)
 
                         # ------------------------------------------------------------------------------------ #
-    
-  def append_csv_path(self, path):
-    self.csv_paths.append(path)
-  
-  def load_mul_csv(self, db_path):
-    for path in self.csv_paths:
-      self.import_csv_to_sqlite(db_path, path)
-
-
-
+  # test func 
   # experimental - upsert team
-  def upsert_team_from_csv(self, csv_path):
-    import csv
-    import json
-
+  def upsert_test(self, csv_path):
     con, cur = self.open_db()
+    print('upsert team')
 
     with open(csv_path, newline='', encoding="utf-8") as f:
         reader = csv.DictReader(f)
+        #print(reader)
+        
+        for row in reader: 
+          print(row)
+          #print('team row keys:', row.keys())
+          #print('team row vals:', row.values())
+          #print('team row items:', row.items())
 
+          if row.get("source_table") == "league":
+              print('source - league:', row)
+          
+          if row.get("source_table") == "team":
+              print('source - team:', row)
+
+          if row.get("source_table") == "player":
+              print('source - player:', row)
+          
+          if row.get("source_table") == "pitcher":
+              print('source - pitcher:', row)
+              
+              
+
+
+           
+  # experimental - upsert team
+  def upsert_team_from_csv(self, csv_path):
+    con, cur = self.open_db()
+    print('upsert team')
+
+    with open(csv_path, newline='', encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        
+        #print(reader)
+        
         for row in reader:
+            #print('team row keys:', row.keys())
+            #print('team row vals:', row.values())
+            #print('team row items:', row.items())
+            
             if row.get("source_table") != "team":
+                print('team row-not team:', row)
                 continue
 
             teamID = row.get("teamID")
@@ -849,6 +884,7 @@ class Load():
                     continue
 
                 update_fields = [f"{k}=?" for k in row if k != "teamID" and k != "source_table"]
+                print('team update fields:', update_fields)
                 update_sql = f"UPDATE team SET {', '.join(update_fields)} WHERE teamID = ?"
                 values = [row[k] for k in row if k != "teamID" and k != "source_table"] + [teamID]
                 cur.execute(update_sql, values)
@@ -864,16 +900,17 @@ class Load():
 
   # experimental - player/pitcher load
   def upsert_player_from_csv(self, csv_path):
-    import csv
-    import json
-
     con, cur = self.open_db()
+    print('upsert player')
 
     with open(csv_path, newline='', encoding="utf-8") as f:
         reader = csv.DictReader(f)
+        #print(reader)
+        
 
         for row in reader:
-            if row.get("source_table") != "player":
+            #print('player row:', row)
+            if row.get("playerId") != "player":
                 continue
 
             playerID = row.get("playerID")
@@ -896,6 +933,7 @@ class Load():
                 response = self.message.show_message(f"Would you like to overwrite {player_name}?")
                 if response.lower() == "yes":
                     update_fields = [f"{k}=?" for k in row if k != "playerID" and k != "source_table"]
+                    print('player update fields:', update_fields)
                     update_sql = f"UPDATE player SET {', '.join(update_fields)} WHERE playerID = ?"
                     values = [row[k] for k in row if k != "playerID" and k != "source_table"] + [playerID]
                     cur.execute(update_sql, values)
@@ -928,3 +966,20 @@ class Load():
     con.close()
    
 
+  # create league, team, player/pitcher instance of csv data
+  def upsert_league_instance_from_csv(self, obj):
+    league = LinkedList()
+    self.league = league
+
+  def upsert_team_instance_from_csv(self, obj):
+    team = Team()
+    self.teams.append(team)
+
+  def upsert_player_instance_from_csv(self, obj):
+    player = Player()
+    pos = player.positions 
+    if "pitcher" in pos:
+       pitcher = Pitcher()
+
+  def upsert_pitcher_instance_from_csv(self):
+    pass
