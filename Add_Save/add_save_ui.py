@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QApplication, QPushButton, QSizePolicy, QVBoxLayo
     QWidget, QDialog)
 from add_player.new_player_ui import Ui_NewPlayer
 from add_team.new_team_w_ui import Ui_NewTeam
-from Save.save_dialog_ui import Ui_SaveDialog
+from Save.save_dialog_ui import SaveDialog
 
 class Ui_Add_Save(QWidget, object):
     def __init__(self, leaderboard, players=None, teams_AVG=None, teams_WL=None):

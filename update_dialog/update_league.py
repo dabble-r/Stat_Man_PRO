@@ -23,7 +23,7 @@ class UpdateLeagueDialog(QDialog):
         self.new_season = None
         self.new_date = None
         self.theme = None
-        self.league_name = self.league.get_name() 
+        self.league_name = self.league.isDefaultName() 
         self.setObjectName("Update League")
 
         default = "League"
@@ -38,8 +38,8 @@ class UpdateLeagueDialog(QDialog):
         # player input - lineup
         self.player_label = QLabel("Enter Admin:")
         self.player_label.setAlignment(Qt.AlignCenter)
-        self.player_input = QLineEdit()
-        self.player_input.setAlignment(Qt.AlignCenter)
+        self.user_input = QLineEdit()
+        self.user_input.setAlignment(Qt.AlignCenter)
 
         # ----- Submit Button ----- #
         self.submit_button = QPushButton("Submit")
@@ -63,7 +63,7 @@ class UpdateLeagueDialog(QDialog):
 
         form_layout = QVBoxLayout()
         form_layout.addWidget(self.player_label)
-        form_layout.addWidget(self.player_input)
+        form_layout.addWidget(self.user_input)
 
         form_widget = QWidget()
         form_widget.setLayout(form_layout)
@@ -108,7 +108,7 @@ class UpdateLeagueDialog(QDialog):
 
         options = ["default"]
 
-        options = ["League Name", "Commissioner", "Historian", "Treasurer", "Recruitment", "Communications", "Theme"]
+        options = ["Name", "Commissioner", "Historian", "Treasurer", "Recruitment", "Communications", "Theme"]
 
         radio_buttons_layout = QVBoxLayout()
         radio_buttons_layout.setAlignment(Qt.AlignTop)
@@ -116,9 +116,10 @@ class UpdateLeagueDialog(QDialog):
         for i in range(len(options)):
             radio = QRadioButton(f"{options[i]}")
 
-            if self.league_name is None:
+            # league name is default 'League'
+            if self.league_name is True:
                 print("league name - 1: ", self.league_name)
-                if options[i] == "League Name":
+                if options[i] == "Name":
                     #radio.setEnabled(True) 
                     radio.setChecked(True)
                 else:
@@ -126,8 +127,8 @@ class UpdateLeagueDialog(QDialog):
                         radio.toggled.connect(self.on_toggle_theme)
                     radio.setEnabled(False)
                     
-
-            elif self.league_name is not None:
+            # league name has been updated
+            elif self.league_name is False:
                 print("league name - 2: ", self.league_name)
                 radio.setEnabled(True)
                 self.date_combo.setEnabled(True)
@@ -142,7 +143,7 @@ class UpdateLeagueDialog(QDialog):
             radio_buttons_layout.addWidget(radio)
 
         # Container widget for the radio buttons (optional)
-        self.player_input.setFocus()
+        self.user_input.setFocus()
         self.date_combo.setEnabled(False)
         self.date_edit.setEnabled(False)
         radio_buttons_widget = QWidget()
@@ -170,7 +171,7 @@ class UpdateLeagueDialog(QDialog):
         self.setLayout(main_layout)
 
     def closeEvent(self, event: QCloseEvent): 
-        if self.league.admin['League Name']:
+        if self.league_name is False:
             event.accept()
 
         else:
@@ -188,7 +189,7 @@ class UpdateLeagueDialog(QDialog):
                 event.ignore()
             
     def launch_league(self):
-        if not self.league.admin['League Name']:
+        if self.league_name is True:
             reply = QMessageBox.question(
                     self,
                     "Confirm Close",
@@ -203,27 +204,26 @@ class UpdateLeagueDialog(QDialog):
                 return
             
         else:
-            
             self.destroy()
     
     def on_toggle_all(self):
-        self.player_input.setEnabled(True)
+        self.user_input.setEnabled(True)
         self.date_combo.setEnabled(False)
     
     def on_toggle_theme(self, checked):
         if checked:
-            self.player_input.setEnabled(False)
+            self.user_input.setEnabled(False)
             self.date_combo.setEnabled(False)
             self.set_theme()
         
     def on_toggle_date(self):
-        self.player_input.setEnabled(False)
+        self.user_input.setEnabled(False)
         self.date_combo.setEnabled(True)
     
     def set_theme(self):
         dialog = UpdateTheme(self.styles, self.message, parent=self)
         dialog.exec()
-        self.player_input.setEnabled(True)
+        self.user_input.setEnabled(True)
         self.date_combo.setEnabled(True)
         self.date_combo.setCurrentIndex(0)
         
@@ -255,7 +255,7 @@ class UpdateLeagueDialog(QDialog):
         self.date_combo.setCurrentIndex(0)
         for el in self.radio_buttons:
             el.setEnabled(True)
-        self.league_name = self.league.get_name()
+        self.league_name = self.league.admin['Name']
         self.setWindowTitle(f"Welcome to the {self.league_name}!")
         print("league name - submit:", self.league_name)
         
@@ -275,7 +275,7 @@ class UpdateLeagueDialog(QDialog):
     
     def on_activate_combo(self):
         self.clear_all()
-        self.player_input.setEnabled(False)
+        self.user_input.setEnabled(False)
         self.date_edit.setEnabled(True)
         
     def on_text_changed(self, text):
@@ -284,7 +284,7 @@ class UpdateLeagueDialog(QDialog):
         self.new_season = season
         
     def clear_all(self):
-        self.player_input.clear()
+        self.user_input.clear()
         for el in self.radio_buttons:
             el.setEnabled(True)
 
@@ -302,21 +302,22 @@ class UpdateLeagueDialog(QDialog):
         else:
             return None
             
-    def set_admin_league(self, stat, player):
+    def set_admin_league(self, stat, val):
         '''"League Name", Commissioner", "Historian", "Treasurer", "Recruitment", "Communications'''
         match stat:
-            case "League Name":
-                self.league.set_admin('admin', stat, player, self)
+            case "Name":
+                print('Name:', stat, val)
+                self.league.set_admin('admin', stat, val, self)
             case 'Commissioner':
-                self.league.set_admin('admin', stat, player, self)
+                self.league.set_admin('admin', stat, val, self)
             case 'Historian':
-                self.league.set_admin('admin', stat, player, self)
+                self.league.set_admin('admin', stat, val, self)
             case 'Treasurer':
-                self.league.set_admin('admin', stat, player, self)
+                self.league.set_admin('admin', stat, val, self)
             case 'Recruitment':
-                self.league.set_admin('admin', stat, player, self)
+                self.league.set_admin('admin', stat, val, self)
             case 'Communications':
-                self.league.set_admin('admin', stat, player, self)
+                self.league.set_admin('admin', stat, val, self)
             case "Season Start":
                 ##print('season')
                 ##print(self.new_date)
@@ -333,10 +334,10 @@ class UpdateLeagueDialog(QDialog):
     def update_stats(self):
         stat = self.get_league_admin()
         #print('update stat:', stat)
-        player = self.player_input.text()
+        val = self.user_input.text()
 
         if 'Season' not in stat:
-            if not stat or not player:
+            if not stat or not val:
                 QMessageBox.warning(self, "Input Error", "Enter player name and select admin position.")
                 return 
             
@@ -350,7 +351,7 @@ class UpdateLeagueDialog(QDialog):
         # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
         # self.stack.add_node(self.league, None, 'admin', (stat, self.league.admin[stat]), self.set_admin_league, 'league')
 
-        self.set_admin_league(stat, player)
+        self.set_admin_league(stat, val)
 
         self.on_submit()
 

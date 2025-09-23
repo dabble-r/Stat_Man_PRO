@@ -1,5 +1,6 @@
 from League.node import Node
 from PySide6.QtWidgets import QMessageBox, QDialog
+import random
 #from team import beef, rougarou
 
 class LinkedList():
@@ -15,14 +16,14 @@ class LinkedList():
   
   def __init__(self, message=None, name=None, head=None):
     self.admin = {
-      "League Name": None,
+      "Name": 'League',
       "Commissioner": None,
       "Treasurer": None,
       "Communications": None,
       "Historian": None,
       "Recruitment": None,
-      "Season Start": None,
-      "Season End": None
+      "Start": None,
+      "Stop": None
     }
     self.date = None
     self.season = None
@@ -40,8 +41,22 @@ class LinkedList():
         if index == 0:
             return 2 
         return index
-    ord_lst = [sum(ord(x)*indx(self.name, x) for x in self.name)]
+    ord_lst = [sum(ord(x)*indx(self.admin['Name'], x) for x in self.admin['Name'])]
+    
     return ord_lst.pop() 
+  
+  def get_rand_hash(self):
+    def indx(a, b):
+        index = a.index(b)
+        if index == 0:
+            return 2 
+        return index
+    ord_lst = [sum(ord(x)*indx(self.admin['Name'], x) for x in self.admin['Name'])]
+    rand = random.randint(0,1000)
+    return ord_lst.pop() + rand
+  
+  def get_incr_hash(self, val):
+    return val + 1
   
   def format_decimal(self, num):
     return "{:.3f}".format(num)
@@ -351,13 +366,14 @@ class LinkedList():
     reply = self.ques_replace(attr, stat, parent)
     if reply == QMessageBox.StandardButton.No: 
       return
+    
     self.admin[stat] = val
 
     #print("admin:\n", stat, val)
 
     # --------------------------------------------------------------------- #
-  def get_name(self):
-    return self.admin['League Name']
+  def isDefaultName(self):
+    return self.admin['Name'] == 'League'  
   
   def get_all_players_num(self):
     ret = []

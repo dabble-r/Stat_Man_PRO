@@ -8,11 +8,11 @@ import glob
 from PySide6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
 )
-
+from datetime import datetime
 
 
 class Save():
-  def __init__(self, db, league, message, file_dir, folder='/CSV'):
+  def __init__(self, db, league, message, file_dir, selection, folder='/CSV'):
     self.db = db
     self.file_dir = file_dir 
     self.folder = folder
@@ -22,6 +22,7 @@ class Save():
     self.league = league
     self.message = message
     self.NULL_TOKEN = "__SQL_NULL__"
+    self.selection = selection
     
   def db_exists(self):
     db_path = Path(self.db)
@@ -53,28 +54,6 @@ class Save():
     return con, cur
 
   
-  '''def db_exists(self):
-    db_path = Path(self.db)
-    db_uri = f"file:{db_path}?mode=rw"
-    #print(db_uri)
-    try:
-        con = sqlite3.connect(db_uri, uri=True, timeout=60)
-        cur = con.cursor()
-        return con, cur
-    except sqlite3.OperationalError:
-        print(f"Database '{db_path}' does not exist!")
-        return None'''
-
-  '''def open_db(self):
-    # Connect and insert
-    
-    if self.db_exists() is not None:
-      con, cur = self.db_exists()
-      return con, cur
-  
-    con = sqlite3.connect(self.db)
-    cur = con.cursor()
-    return con, cur'''
   
   def get_con(self):
     try: 
@@ -123,13 +102,13 @@ class Save():
     con, cur = self.open_db()
     cur.execute("PRAGMA foreign_keys = ON")
     
-    con.commit()
-    con.close()
-    
     self.init_league()
     self.init_team()
     self.init_player()
     self.init_pitcher()
+
+    con.commit()
+    con.close()
 
   def init_league(self):
       con, cur = self.open_db()
@@ -163,14 +142,14 @@ class Save():
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       """, (
           self.league.leagueID,
-          self.league.name,
+          self.league.admin['Name'],
           self.league.admin['Commissioner'],
           self.league.admin['Historian'],
           self.league.admin['Recruitment'],
           self.league.admin['Communications'],
           self.league.admin['Historian'],
-          self.league.admin['Season Start'],
-          self.league.admin['Season End']
+          self.league.admin['Start'],
+          self.league.admin['Stop']
       ))
 
       # commit created tables and close
@@ -305,7 +284,210 @@ class Save():
       
       con.commit()
       con.close()
+  
+  def update_league(self, cur, con, league_ID, obj, dir_list):
+    ##print(dir_list)
+    cols = []
+    vals = []
+    ##print(exclude_attrs(team))
+
+    for el in dir_list:
+      val = getattr(obj, el)
+
+      if isinstance(val, (dict)):
+        print('league val:', val)
+        keys = list(val.keys())
+        values = list(val.values())
+        print(keys)
+        print(values)
+
+        for indx, el in enumerate(keys):
+          if values[indx] is None:
+            cols.append(el.lower())
+            vals.append(self.NULL_TOKEN)
+          else:
+            cols.append(el.lower())
+            vals.append(values[indx].lower())
+      
+      else:
+        cols.append(el)
+        vals.append(val)
+
+    #placeholders = ", ".join(["?"] * len(vals))
+    #column_str = ", ".join(cols)
+
+    set_clause = ", ".join([f"{col} = ?" for col in cols])
+    sql = f"UPDATE league SET {set_clause} WHERE leagueID = ?"
+
+    print(set_clause)
+    print(sql)
+    print(cols)
+
+    # modify command
+    cur.execute(sql, vals + [league_ID])
+    con.commit()
+
+  def save_league(self):
+    def keep_attrs(obj, flag=1):
+      attrs = dir(obj)
+      keep_1 = ['leagueID', 'admin']
+      keep_2 = ['name', 'commissioner', 'treasurer', 'communications', 'historian', 'recruitment', 'start', 'stop']
+      if flag == 1:
+        dir_list = [x for x in attrs if self.sql_safe(x) and x in keep_1]  
+      elif flag == 2:
+        dir_list = [x for x in attrs if self.sql_safe(x) and x in keep_2]  
+      return dir_list
     
+    con, cur = self.open_db()
+    dir_list_1 = keep_attrs(self.league)
+
+    # if there is a league table in DB
+    if self.table_exists(con, cur, 'league'):
+      # update league table if update flag 
+      leagueID = self.league.leagueID 
+
+      # fetch all league instances IDs
+      res = cur.execute(f"SELECT leagueID FROM league")
+      ret = [row[0] for row in res.fetchall()] # ret of league IDs
+      print(ret)
+
+      cols = []
+      vals = []
+
+      # if current league exists in DB
+      if leagueID in ret:
+        
+        # prompt user to overwrite, create new DB, or cancel
+        self.message.show_message(f"League: {self.league.admin['Name']} exists!\nOverwrite?") 
+
+        # if user chooses to overwrite, update league instance fields
+        if self.message.choice == 'ok':
+          self.update_league(cur, con, self.league.leagueID, self.league, dir_list_1)
+          return
+        
+        # if user chooses not to overwtite, create a new league row/instance
+        elif self.message.choice == 'no': 
+          # create new league in DB
+          print('create new league in DB')
+
+          self.league.leagueID = self.league.get_incr_hash(leagueID)
+          dir_list_1 = keep_attrs(self.league)
+
+          print(self.league)
+          print('league ID:', self.league.leagueID)
+          print('dir list:', dir_list_1)
+
+          for el in dir_list_1:
+            val = getattr(self.league, el)
+            print('val in league dir:', val)
+
+            if isinstance(val, (dict)):
+              print('team val:', val)
+              keys = list(val.keys())
+              values = list(val.values())
+              print(keys)
+              print(values)
+
+              for indx, el in enumerate(keys):
+                if values[indx] is None:
+                  cols.append(el)
+                  vals.append(self.NULL_TOKEN)
+                else:
+                  cols.append(el.lower())
+                  vals.append(values[indx].lower())
+            
+            else:
+              cols.append(el)
+              vals.append(val)
+
+          placeholders = ", ".join(["?"] * len(vals))
+          column_str = ", ".join(cols)
+
+          print('placeholders - no:', placeholders)
+          print('column str - no:', column_str)
+        
+          try: 
+            cur.execute(
+                        f"INSERT INTO league ({column_str}) VALUES ({placeholders})",
+                        tuple(vals)
+                      )
+                    
+            con.commit()
+          
+          except Exception as e:
+            print(f"Error-League Save: DB not updated {e}")
+          
+          return
+        
+        # otherwise, cancel 
+        elif self.message.choice == 'cancel':
+          return
+        
+      elif leagueID not in ret:
+
+        for el in dir_list_1:
+          val = getattr(self.league, el)
+
+          if isinstance(val, (dict)):
+            print('team val:', val)
+            keys = list(val.keys())
+            values = list(val.values())
+            print(keys)
+            print(values)
+
+            for indx, el in enumerate(keys):
+              if values[indx] is None:
+                cols.append(el)
+                vals.append(self.NULL_TOKEN)
+              else:
+                cols.append(el.lower())
+                vals.append(values[indx].lower())
+          
+          else:
+            cols.append(el)
+            vals.append(val)
+
+      for el in dir_list_1:
+          val = getattr(self.league, el)
+
+          if isinstance(val, (dict)):
+            print('team val:', val)
+            keys = list(val.keys())
+            values = list(val.values())
+            print(keys)
+            print(values)
+
+            for indx, el in enumerate(keys):
+              if values[indx] is None:
+                cols.append(el)
+                vals.append(self.NULL_TOKEN)
+              else:
+                cols.append(el.lower())
+                vals.append(values[indx].lower())
+          
+          else:
+            cols.append(el)
+            vals.append(val)
+
+          placeholders = ", ".join(["?"] * len(vals))
+          column_str = ", ".join(cols)
+
+          print(placeholders)
+          print(column_str)
+        
+          try: 
+            cur.execute(
+                        f"INSERT INTO league ({column_str}) VALUES ({placeholders})",
+                        tuple(vals)
+                      )
+                    
+            con.commit()
+          
+          except Exception as e:
+            print(f"Error-League Save: DB not updated {e}")
+          
+          return
+
   def save_team(self):
     def keep_attrs(obj):
       keep = ['teamID', 'name', 'leagueID', 'league', 'logo', 'manager', 'players', 'lineup', 'positions', 'wins', 'losses', 'games_played', 'wl_avg', 'bat_avg', 'team_era', 'max_roster']
@@ -336,7 +518,7 @@ class Save():
               continue'''
             
             dir_list = keep_attrs(team) 
-            print(dir_list)
+            #print(dir_list)
             cols = []
             vals = []
             check_type = [int, str, float, dict, list, type(None)]
@@ -344,9 +526,8 @@ class Save():
 
             for el in dir_list:
               val = getattr(team, el)
-              print('el--val:', el, val)
+              #print('el--val:', el, val)
               
-
               if isinstance(val, (dict)):
                 val = json.dumps(val)
 
@@ -813,11 +994,11 @@ class Save():
 
         column_names = [description[0] for description in cur.description]
 
-        file_name = f"{table}.csv"
+        file_name = f"{table}{self.get_timestamp()}.csv"
         file_path = os.path.join(f"{self.file_dir}/{self.folder}", file_name)
         
         if self.isPathExist(file_path):
-          file_name = self.rand_file_name(table, rand)
+          file_name = self.avoid_dup_file_name(table, self.get_timestamp(flag=True))
           file_path = self.upd_file_path(self.file_dir, self.folder, file_name)
 
         with open(file_path, "w", newline='', encoding='utf-8') as f:
@@ -832,15 +1013,15 @@ class Save():
       return True 
     return False
   
-  def rand_file_name(self, table, rand):
-    file_name = f"{table}_{rand}.csv"
+  def avoid_dup_file_name(self, table, timestamp):
+    file_name = f"{table}{timestamp}.csv"
     return file_name 
   
   def upd_file_path(self, file_dir, folder, file_name):
     file_path = os.path.join(f"{file_dir}/{folder}", file_name)
     return file_path
 
-  # not currently in use
+  # currently in use
   def save_master(self, db_path, csv_path, output_file):
     con, cur = self.open_db()
 
@@ -851,11 +1032,22 @@ class Save():
       print('no tables exist - init league')
       self.init_new_db()
     
-    #print('update team/player/pitcher fields')
-    self.save_team()
-    self.save_player()
+    if 'csv' not in self.selection:
+      #print('update team/player/pitcher fields')
+      self.save_league()
+      self.save_team()
+      self.save_player()
 
-    self.save_csv(db_path, csv_path, output_file)
+    
+    elif 'database' not in self.selection:
+      self.save_csv(db_path, csv_path, output_file) 
+    
+    else:
+      self.save_league()
+      self.save_team()
+      self.save_player()
+
+      self.save_csv(db_path, csv_path, output_file)
 
     con.commit()
     con.close()
@@ -889,173 +1081,16 @@ class Save():
 
     return row
 
-  # deprecated
-  def save_master_complete_1(self, db_path, file_dir, output_file):
-      con = sqlite3.connect(db_path)
-      cur = con.cursor()
-
-      output_path = os.path.join(file_dir, output_file)
-      if os.path.exists(output_path):
-        rand = random.randint(0, 1000)
-        output_path = os.path.join(file_dir, f"{output_file}({rand})")
-        
-      # Get all table names
-      cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-      tables = [row[0] for row in cur.fetchall()]
-      #print('save tables:', tables)
-      if len(tables) == 0:  
-        self.message.show_message("No Database found!")
-        self.init_new_db()
-        return
-
-      with open(output_path, "w", newline='', encoding="utf-8") as f:
-          writer = csv.writer(f)
-          header_written = False
-
-          for table_name in tables:
-              try:
-                  cur.execute(f"SELECT * FROM {table_name}")
-                  rows = cur.fetchall()
-                  print('save rows:', rows)
-                  headers = [desc[0] for desc in cur.description]
-
-                  # Add source_table column
-                  extended_headers = headers + ["source_table"]
-                  print('ext headers:', extended_headers)
-                  if not header_written:
-                      writer.writerow(extended_headers)
-                      header_written = True
-
-                  for row in rows:
-                      print('save complete:', row)
-                      formatted = self.format_row(table_name, row, headers)
-                      formatted.append(table_name)
-                      writer.writerow(formatted)
-
-                  print(f"✅ Added {table_name} ({len(rows)} rows)")
-
-              except sqlite3.Error as e:
-                  print(f"⚠️ Skipped {table_name}: {e}")
-
-      cur.close()
-      con.close()
-
-  def save_master_complete_2(self, db_path, file_dir, output_file):
-      """Export all user tables in db_path to a single master CSV placed at file_dir/output_file.
-        The CSV header is: source_table, <union of all columns...>
-        NULLs are written as the sentinel defined in NULL_TOKEN.
-      """
-      con = sqlite3.connect(db_path)
-      cur = con.cursor()
-
-      # ensure .csv extension
-      if not output_file.lower().endswith(".csv"):
-          output_file = output_file + ".csv"
-      output_path = os.path.join(file_dir, output_file)
-      if os.path.exists(output_path):
-          rand = random.randint(0, 100000)
-          base, ext = os.path.splitext(output_path)
-          output_path = f"{base}({rand}){ext}"
-
-      # get user-defined tables (exclude sqlite internal tables)
-      cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-      tables = [row[0] for row in cur.fetchall()]
-      if not tables:
-          # keep your error handling flow
-          # e.g. self.message.show_message("No Database found!")
-          #       self.init_new_db()
-          cur.close()
-          con.close()
-          raise RuntimeError("No user tables found in database.")
-
-      # collect columns for each table and build master column order (first-seen)
-      master_columns = []
-      table_columns = {}
-      for table in tables:
-          cur.execute(f"PRAGMA table_info({table})")
-          cols = [r[1] for r in cur.fetchall()]  # r[1] == column name
-          table_columns[table] = cols
-          for c in cols:
-              if c not in master_columns:
-                  master_columns.append(c)
-
-      # header: source_table first (makes parsing easier), then master columns
-      headers = ["source_table"] + master_columns
-
-      with open(output_path, "w", newline="", encoding="utf-8") as f:
-          writer = csv.writer(f)
-          writer.writerow(headers)
-
-          for table in tables:
-              cols = table_columns[table]
-              # fetch all rows for this table
-              cur.execute(f"SELECT * FROM {table}")
-              rows = cur.fetchall()
-
-              for row in rows:
-                  # map this table's columns to values
-                  row_dict = dict(zip(cols, row))
-                  out_row = [table]
-                  for col in master_columns:
-                      val = row_dict.get(col, None)
-                      # write the NULL sentinel if value was actually NULL/None
-                      out_row.append(self.NULL_TOKEN if val is None else val)
-                  writer.writerow(out_row)
-
-      cur.close()
-      con.close()
-      return output_path  # useful to know where it saved
-
-  def save_master_complete_3(self, db_path, csv_path, output_file):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-
-     # ensure .csv extension
-    if not output_file.lower().endswith(".csv"):
-        output_file = output_file + ".csv"
-    output_path = os.path.join(csv_path, output_file)
-    if os.path.exists(output_path):
-        rand = random.randint(0, 100000)
-        base, ext = os.path.splitext(output_path)
-        output_path = f"{base}({rand}){ext}"
-    
-    res = cur.execute("SELECT name from sqlite_master where type='table'")
-    ret = [row[0] for row in res.fetchall()]
-
-    if len(ret) == 0:
-      print('no tables exist - init league')
-      self.init_new_db()
-    
-    self.save_team()
-    self.save_player()
-
-    tables = ["league", "team", "player", "pitcher"]
-
-    with open(output_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-
-        for table in tables:
-            # Write table marker
-            writer.writerow(["TABLE", table])
-
-            # Get column info
-            cur.execute(f"PRAGMA table_info({table})")
-            columns_info = cur.fetchall()  # (cid, name, type, notnull, dflt_value, pk)
-            columns = [f"{col[1]}:{col[2]}" for col in columns_info]
-            writer.writerow(["COLUMNS"] + columns)
-
-            # Write data
-            cur.execute(f"SELECT * FROM {table}")
-            rows = cur.fetchall()
-            for row in rows:
-                writer.writerow(["DATA"] + list(row))
-
-            # Add a blank line for readability
-            writer.writerow([])
-
-    conn.close()
-
+  
   def get_rand(self):
         rand = str(random.randint(1, 1000))
         return rand
+    
+  def get_timestamp(self, flag=False):
+    now = datetime.now()
+    date = now.strftime("_%m%d%Y")
+    if flag: 
+      date = now.strftime("_%m%d%Y_%S")
+    #print(f"Formatted date: {date}")
+    return date
     

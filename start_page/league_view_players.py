@@ -25,7 +25,7 @@ from start_page.league_view_teams import LeagueViewTeams
 from stat_dialog.stat_dialog_ui import Ui_StatDialog
 from remove.remove import RemoveDialog
 
-from Save.save_dialog_ui import Ui_SaveDialog
+from Save.save_dialog_ui import SaveDialog
 from Load.load_dialog_ui import Load
 from Files.file_dialog import FileDialog
 import random
@@ -183,10 +183,10 @@ class LeagueViewPlayers(QWidget):
         self.save_widget.setModal(True)
 
         # Just instantiate and call setupUi once
-        self.save_ui = Ui_SaveDialog(self.league, self.message, self.file_dir, self.save_widget)
-        self.save_ui.setupUi(self.save_widget)
+        self.save_ui = SaveDialog(self.league, self.message, self.file_dir, self.parent)
+        #self.save_ui.setupUi(self.save_widget)
 
-        self.save_widget.exec()
+        self.save_ui.exec()
 
         
     def load_csv(self):

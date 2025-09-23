@@ -150,7 +150,7 @@ class MainWindow(QWidget):
 
         self.setup_league_ui()
 
-        self.title = f"Welcome to {self.league.get_name()}" if self.league.get_name() else "Welcome to the league"
+        self.title = f"Welcome to {self.league.admin['Name']}" if self.league.admin['Name'] else "Welcome to the league"
         self.setWindowTitle(self.title)
 
         # ----------------------------------------------------------------------------- #
