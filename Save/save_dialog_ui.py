@@ -138,7 +138,7 @@ class SaveDialog(QDialog):
             return
        
         save = Save(self.db, self.league, self.message, self.file_dir, self.selection)
-        save.save_master(self.db, f"{self.file_dir}/CSV", "master_export.csv")
+        save.save_master(self.db, f"{self.file_dir}/CSV")
 
         self.accept()
 

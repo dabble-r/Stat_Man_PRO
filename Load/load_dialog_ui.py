@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QDialog, QPushButton, QLabel, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import QMetaObject
-from Load.load import Load 
+from Load.load import Load
+from Load.load_csv import load_all_csv_to_db
 import math 
 import random
 
@@ -11,7 +12,7 @@ class Ui_LoadDialog:
         self.file_dir = file_dir
         self.csv_path = csv_path
         self.parent = parent
-        self.db = f'{self.league.name}.db' if self.league.name else f'db_{self.rand}.db'
+        self.db = f'{self.league.admin['Name']}.db' if self.league.admin['Name'] else f'db_{self.rand}.db'
         self.setupUi(parent)
 
     def setupUi(self, SaveDialog: QDialog):
@@ -52,9 +53,9 @@ class Ui_LoadDialog:
         self.label.setText("Do you want to save your progress?")
 
     def button_ok_handler(self):
-        print(f"Loading progress for league: {self.league.name}")
-        load = Load(self.db, self.csv_path, self.league, self.message, self.file_dir)
-        load.load_master()
+        print(f"Loading progress for league: {self.league.admin['Name']}")
+        #load = Load(self.db, self.csv_path, self.league, self.message, self.file_dir)
+        load_all_csv_to_db(self.file_dir, self.db)
 
         self.parent.accept()
         

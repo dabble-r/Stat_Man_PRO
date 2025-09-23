@@ -968,26 +968,24 @@ class Save():
   def sql_safe(self, val):
     return isinstance(val, (type(None), int, float, str))
 
-  def save_csv(self, db_path, csv_path, output_file):
+  def save_csv(self, db_path, csv_path):
     con = sqlite3.connect(db_path)
     cur = con.cursor()
 
-    # ensure .csv extension
-    if not output_file.lower().endswith(".csv"):
-        output_file = output_file + ".csv"
-    output_path = os.path.join(csv_path, output_file)
-    if os.path.exists(output_path):
-        rand = random.randint(0, 100000)
-        base, ext = os.path.splitext(output_path)
-        output_path = f"{base}({rand}){ext}"
-
+    new_dir = os.path.join(csv_path, self.get_timestamp())
+    print('new dir:', new_dir)
+    
+    if not os.path.exists(new_dir):
+      os.mkdir(new_dir)
+      
+    elif os.path.exists(new_dir):
+      new_dir = os.path.join(csv_path, self.get_timestamp(flag=True))
+      os.mkdir(new_dir)
+      
     cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = [row[0] for row in cur.fetchall()]
     
     # Ensure the directory exists
-    os.makedirs(f"{self.file_dir}/CSV", exist_ok=True)
-    rand = str(random.randint(1, 1000))
-
     for table in tables:
         cur.execute(f"SELECT * FROM {table}")
         rows = cur.fetchall()
@@ -995,11 +993,11 @@ class Save():
         column_names = [description[0] for description in cur.description]
 
         file_name = f"{table}{self.get_timestamp()}.csv"
-        file_path = os.path.join(f"{self.file_dir}/{self.folder}", file_name)
+        file_path = os.path.join(new_dir, file_name)
         
         if self.isPathExist(file_path):
           file_name = self.avoid_dup_file_name(table, self.get_timestamp(flag=True))
-          file_path = self.upd_file_path(self.file_dir, self.folder, file_name)
+          file_path = self.upd_file_path(new_dir, file_name)
 
         with open(file_path, "w", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -1017,12 +1015,13 @@ class Save():
     file_name = f"{table}{timestamp}.csv"
     return file_name 
   
-  def upd_file_path(self, file_dir, folder, file_name):
-    file_path = os.path.join(f"{file_dir}/{folder}", file_name)
+  def upd_file_path(self, output_path, file_name):
+    file_path = os.path.join(output_path, file_name)
     return file_path
 
+  # ------------------------------------------------------------------------------------------------- #
   # currently in use
-  def save_master(self, db_path, csv_path, output_file):
+  def save_master(self, db_path, csv_path):
     con, cur = self.open_db()
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
@@ -1040,14 +1039,14 @@ class Save():
 
     
     elif 'database' not in self.selection:
-      self.save_csv(db_path, csv_path, output_file) 
+      self.save_csv(db_path, csv_path) 
     
     else:
       self.save_league()
       self.save_team()
       self.save_player()
 
-      self.save_csv(db_path, csv_path, output_file)
+      self.save_csv(db_path, csv_path)
 
     con.commit()
     con.close()
@@ -1081,7 +1080,6 @@ class Save():
 
     return row
 
-  
   def get_rand(self):
         rand = str(random.randint(1, 1000))
         return rand

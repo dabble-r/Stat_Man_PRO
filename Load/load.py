@@ -841,8 +841,6 @@ class Load():
               
               
 
-
-           
   # experimental - upsert team
   def upsert_team_from_csv(self, csv_path):
     con, cur = self.open_db()
