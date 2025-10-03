@@ -28,7 +28,7 @@ class Save():
     db_path = Path(self.db)
     db_uri = f"file:{db_path}?mode=rw"
     try:
-        con = sqlite3.connect(db_uri, uri=True, timeout=60)
+        con = sqlite3.connect(db_uri, uri=True, timeout=30)
         cur = con.cursor()
         return con, cur
     except sqlite3.OperationalError:
@@ -45,7 +45,11 @@ class Save():
     db_dir = db_path.parent
     if not db_dir.exists():
         print(f"Creating missing directory: {db_dir}")
-        db_dir.mkdir(parents=True, exist_ok=True)
+        directory = db_dir
+        filename = "League.db"
+        full_path = os.path.join(directory, filename)
+        db_dir.mkdir(full_path, exist_ok=True)
+        
 
     # Create new database
     print(f"Creating new database at: {db_path}")
@@ -1032,6 +1036,9 @@ class Save():
     con = cur = None
     if result:
       con, cur = result
+    else:
+      print('No League.db file!')
+
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
     ret = [row[0] for row in res.fetchall()]
