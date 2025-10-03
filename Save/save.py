@@ -1038,18 +1038,18 @@ class Save():
       con, cur = result
     else:
       print('No League.db file!')
-
+      self.init_new_db()
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
     ret = [row[0] for row in res.fetchall()]
 
-    if len(ret) == 0:
+    '''if len(ret) == 0:
       print('no tables exist - init league')
       self.init_new_db()
-    
+    '''
     if 'csv' not in self.selection:
       #print('update team/player/pitcher fields')
-      self.save_league()
+      #self.save_league()
       self.save_team()
       self.save_player()
 
