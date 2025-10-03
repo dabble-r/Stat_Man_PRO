@@ -288,6 +288,7 @@ class Ui_NewPlayer(QWidget, object):
         ###print('args:', args_player)
         name, num, team, pos = args_player 
         find_team = self.league.find_team(team)
+        print('new player - team', find_team)
 
         if self.team_check(team) == False:
             #print('team not found') 
@@ -333,7 +334,7 @@ class Ui_NewPlayer(QWidget, object):
             args_player = inst_player.name, inst_player.number, inst_player.team, inst_player.positions, inst_player.AVG
             ###print("args player:", args_player)
 
-            item = QTreeWidgetItem([inst_player.name, inst_player.team, inst_player.number])
+            item = QTreeWidgetItem([inst_player.name, inst_player.team.name, inst_player.number])
             item.setTextAlignment(0, Qt.AlignCenter)
             item.setTextAlignment(1, Qt.AlignCenter)
             item.setTextAlignment(2, Qt.AlignCenter)
