@@ -18,7 +18,9 @@ class FileDialog(QWidget):
         self.flag = flag
         self.db_path = None 
         self.csv_path = None
+        self.merge = False
 
+    # deprecated
     def open_dual_file_dialog(self):
         print("Opening dual file dialog...")
 
@@ -66,6 +68,65 @@ class FileDialog(QWidget):
    
     def open_file_dialog(self):
         print("open dialog")
+        filter_str = None
+        selected = None
+        if self.flag == 'save':
+            filter_str = "Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)"
+            selected, _ = QFileDialog.getOpenFileName(
+                parent=self.parent,
+                caption="Select a file",
+                dir=f"{self.file_dir}",  # Initial directory
+                #filter="Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)" # File filters
+                filter = filter_str
+            )
+            if selected:
+                print(f"Selected file: {selected}")
+                #print(f'file dir-file dialog: {self.dir_path}')
+                try:
+                    #full_path = os.path.join(self.file_dir, filename)
+                    isFile = os.path.isfile(selected)
+                    if isFile:
+                        self.file_path = selected  # ← Use the absolute path directly
+                        return self.file_path
+                except Exception as e:
+                    #print(f'error joining file:\n {e}')
+                    self.message.show_message(f'Error:\n{e}')
+                    return
+                # prompt user - merge or overwrite data
+            else:
+                print("No file selected.")
+                self.message.show_message("No file selected!")
+
+        elif self.flag == 'load':
+            filter_str = "All Files (*.*)"
+            selected = QFileDialog.getExistingDirectory(
+                parent=self.parent,
+                caption="Select a folder",
+                dir=f"{self.file_dir}",  # Initial directory
+                #filter="Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)" # File filters
+                #filter = filter_str
+            )
+            if selected:
+                print(f"Selected folder: {selected}")
+                #print(f'file dir-file dialog: {self.dir_path}')
+                try:
+                    #full_path = os.path.join(self.file_dir, filename)
+                    isFolder = os.path.isdir(selected)
+                    if isFolder:
+                        self.file_path = selected  # ← Use the absolute path directly
+                        return self.file_path
+                except Exception as e:
+                    #print(f'error joining file:\n {e}')
+                    self.message.show_message(f'Error:\n{e}')
+                    return
+                # prompt user - merge or overwrite data
+            else:
+                print("No folder selected.")
+                self.message.show_message("No folder selected!")
+    
+    # not in use
+    def open_file_dialog_csv(self):
+        print("open dialog csv")
         filter_str = None
         if self.flag == 'save':
             filter_str = "Images (*.png *.jpg *.jpeg *.gif);;All Files (*.*)"

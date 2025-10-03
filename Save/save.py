@@ -38,7 +38,7 @@ class Save():
   def open_db(self):
     result = self.db_exists()
     if result:
-        return result  # con, cur
+      return result  # con, cur
 
     # Ensure parent directory exists before creating new DB
     db_path = Path(self.db)
@@ -972,18 +972,24 @@ class Save():
     con = sqlite3.connect(db_path)
     cur = con.cursor()
 
-    new_dir = os.path.join(csv_path, self.get_timestamp())
+    '''new_dir = os.path.join(csv_path, self.get_timestamp())
     print('new dir:', new_dir)
     
     if not os.path.exists(new_dir):
       os.mkdir(new_dir)
       
     elif os.path.exists(new_dir):
+      print(f"Dir: {new_dir} exists!")
       new_dir = os.path.join(csv_path, self.get_timestamp(flag=True))
-      os.mkdir(new_dir)
-      
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = [row[0] for row in cur.fetchall()]
+      os.mkdir(new_dir)'''
+    
+    try: 
+      cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+      tables = [row[0] for row in cur.fetchall()]
+    
+    except Exception as e:
+      print(f'Error: No DB found! {e}')
+    
     
     # Ensure the directory exists
     for table in tables:
@@ -993,11 +999,11 @@ class Save():
         column_names = [description[0] for description in cur.description]
 
         file_name = f"{table}{self.get_timestamp()}.csv"
-        file_path = os.path.join(new_dir, file_name)
+        file_path = os.path.join(csv_path, file_name)
         
         if self.isPathExist(file_path):
           file_name = self.avoid_dup_file_name(table, self.get_timestamp(flag=True))
-          file_path = self.upd_file_path(new_dir, file_name)
+          file_path = self.upd_file_path(csv_path, file_name)
 
         with open(file_path, "w", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -1022,7 +1028,10 @@ class Save():
   # ------------------------------------------------------------------------------------------------- #
   # currently in use
   def save_master(self, db_path, csv_path):
-    con, cur = self.open_db()
+    result = self.open_db() 
+    con = cur = None
+    if result:
+      con, cur = result
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
     ret = [row[0] for row in res.fetchall()]
@@ -1091,4 +1100,224 @@ class Save():
       date = now.strftime("_%m%d%Y_%S")
     #print(f"Formatted date: {date}")
     return date
-    
+
+                                              # ----------------------------------------------------------------------------------------- #
+                                              # --------------------- outsie of class - helper init db functions -----------------------  #
+
+def db_exists(db_path):
+    db_path = Path(db_path)
+    db_uri = f"file:{db_path}?mode=rw"
+    try:
+        con = sqlite3.connect(db_uri, uri=True, timeout=60)
+        cur = con.cursor()
+        return con, cur
+    except sqlite3.OperationalError:
+        print(f"Database '{db_path}' does not exist!")
+        return None
+
+
+def open_db(db_path):
+    result = db_exists(db_path)
+    if result:
+        return result  # con, cur
+
+    # Ensure parent directory exists before creating new DB
+    db_path = Path(db_path)
+    db_dir = db_path.parent
+    if not db_dir.exists():
+        print(f"Creating missing directory: {db_dir}")
+        db_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create new database
+    print(f"Creating new database at: {db_path}")
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    return con, cur
+
+def init_league(db_path, league):
+      con, cur = open_db(db_path)
+      
+      # Create league table
+      cur.execute(f"""
+          CREATE TABLE IF NOT EXISTS league (
+              leagueID INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              commissioner TEXT,
+              treasurer TEXT,
+              communications TEXT,
+              historian TEXT,
+              recruitment TEXT,
+              start TEXT,
+              stop TEXT
+          )
+      """)
+
+      cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_league_unique
+        ON league(leagueID);
+    """)
+
+      # set up league cols and fields
+      cur.execute("""
+      INSERT INTO league (
+          leagueID, name, commissioner, treasurer,
+          communications, historian, recruitment,
+          start, stop
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """, (
+          league.leagueID,
+          league.admin['Name'],
+          league.admin['Commissioner'],
+          league.admin['Historian'],
+          league.admin['Recruitment'],
+          league.admin['Communications'],
+          league.admin['Historian'],
+          league.admin['Start'],
+          league.admin['Stop']
+      ))
+
+      # commit created tables and close
+      con.commit()
+      con.close()
+    # call init league
+
+def init_team(db_path):
+      con, cur = open_db(db_path)
+
+      # Create team table
+      cur.execute("""
+        CREATE TABLE IF NOT EXISTS team (
+            teamID INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            leagueID INTEGER NOT NULL,
+            league TEXT,
+            logo TEXT,
+            manager TEXT,
+            players TEXT,         -- JSON stringified list
+            lineup TEXT,          -- JSON stringified dict
+            positions TEXT,       -- JSON stringified dict
+            wins INTEGER DEFAULT 0,
+            losses INTEGER DEFAULT 0,
+            games_played INTEGER DEFAULT 0,
+            wl_avg REAL DEFAULT 0.0,
+            bat_avg REAL DEFAULT 0.0,
+            team_era REAL DEFAULT 0.0,
+            max_roster INTEGER,
+            FOREIGN KEY (leagueID) REFERENCES league(leagueID)
+        )
+      """) 
+
+      cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_team_unique
+        ON team(teamID);
+      """)
+
+      con.commit()
+      con.close()
+    # call init team
+
+def init_player(db_path):
+      con, cur = open_db(db_path)
+      
+      # Create player table
+      cur.execute("""
+          CREATE TABLE IF NOT EXISTS player (
+              playerID INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              leagueID INTEGER NOT NULL,
+              teamID INTEGER NOT NULL,
+              number INTEGER,
+              team TEXT,
+              positions TEXT,       -- JSON stringified list
+              pa INTEGER DEFAULT 0,
+              at_bat INTEGER DEFAULT 0,
+              fielder_choice INTEGER DEFAULT 0,
+              hit INTEGER DEFAULT 0,
+              bb INTEGER DEFAULT 0,
+              hbp INTEGER DEFAULT 0,
+              so INTEGER DEFAULT 0,
+              hr INTEGER DEFAULT 0,
+              rbi INTEGER DEFAULT 0,
+              runs INTEGER DEFAULT 0,
+              singles INTEGER DEFAULT 0,
+              doubles INTEGER DEFAULT 0,
+              triples INTEGER DEFAULT 0,
+              sac_fly INTEGER DEFAULT 0,
+              OBP REAL DEFAULT 0.0,
+              BABIP REAL DEFAULT 0.0,
+              SLG REAL DEFAULT 0.0,
+              AVG REAL DEFAULT 0.0,
+              ISO REAL DEFAULT 0.0,
+              image TEXT,
+              FOREIGN KEY (leagueID) REFERENCES league(leagueID),
+              FOREIGN KEY (teamID) REFERENCES team(teamID)
+          )
+      """)
+
+      cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_player_unique
+        ON player(playerID);
+      """)
+      
+      con.commit()
+      con.close()
+
+def init_pitcher(db_path):
+      # Create pitcher table
+      con, cur = open_db(db_path)
+      cur.execute("""
+      
+     
+        CREATE TABLE IF NOT EXISTS pitcher (
+            playerID INTEGER PRIMARY KEY,
+            leagueID INTEGER NOT NULL,
+            teamID INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            wins INTEGER DEFAULT 0,
+            losses INTEGER DEFAULT 0,
+            era REAL DEFAULT 0.0,
+            games_played INTEGER DEFAULT 0,
+            games_started INTEGER DEFAULT 0,
+            games_completed INTEGER DEFAULT 0,
+            shutouts INTEGER DEFAULT 0,
+            saves INTEGER DEFAULT 0,
+            save_ops INTEGER DEFAULT 0,
+            ip REAL DEFAULT 0.0,
+            p_at_bats INTEGER DEFAULT 0,
+            p_hits INTEGER DEFAULT 0,
+            p_runs INTEGER DEFAULT 0,
+            er INTEGER DEFAULT 0,
+            p_hr INTEGER DEFAULT 0,
+            p_hb INTEGER DEFAULT 0,
+            p_bb INTEGER DEFAULT 0,
+            p_so INTEGER DEFAULT 0,
+            WHIP REAL DEFAULT 0.0,
+            p_AVG REAL DEFAULT 0.0,
+            k_9 REAL DEFAULT 0.0,
+            bb_9 REAL DEFAULT 0.0,
+            FOREIGN KEY (playerID) REFERENCES player(playerID),
+            FOREIGN KEY (leagueID) REFERENCES league(leagueID),
+            FOREIGN KEY (teamID) REFERENCES team(teamID)
+        )
+    """)
+      
+      cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_pitcher_unique
+        ON pitcher(playerID);
+      """)
+      
+      con.commit()
+      con.close()
+
+def init_new_db(db_path, league):
+  # Enable foreign key constraints
+  con, cur = open_db(db_path)
+  cur.execute("PRAGMA foreign_keys = ON")
+
+  init_league(db_path, league)
+  init_team(db_path)
+  init_player(db_path)
+  init_pitcher(db_path)
+
+  con.commit()
+  con.close()

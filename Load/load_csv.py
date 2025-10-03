@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QLabel, QPushButton, QScrollArea, QWidget, QHBoxLayout, QSizePolicy
 )
 from PySide6.QtCore import Qt
+from Save.save import init_new_db
 
 
 
@@ -264,7 +265,7 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
 
 
 # ----------------------- Full CSV Loader -----------------------
-def load_all_csv_to_db(directory: str, db_path: str):
+def load_all_csv_to_db(league, directory: str, db_path: str):
     """
     Full workflow: session selection + database choice + overwrite choice + import + summary.
     """
@@ -299,6 +300,25 @@ def load_all_csv_to_db(directory: str, db_path: str):
     if db_choice == "new database":
         print("Creating new database...")
         # Handle DB creation logic separately if needed
+        # delete League.db 
+        # db exists 
+        try: 
+            conn = sqlite3.connect(db_path)
+            conn.close() 
+        except Exception as e: 
+            print(f"Error closing connection: {e}")
+            return 
+        
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                print(f"Database file '{db_path}' deleted successfully.")
+                init_new_db(db_path, league)
+            except OSError as e:
+                print(f"Error deleting database file '{db_path}': {e}") 
+        else:
+            print(f"No DB found at {db_path}!") 
+
         mode = "overwrite"  # assume new DB → overwrite
     else:
         # Step 3: Overwrite/skip/cancel choice

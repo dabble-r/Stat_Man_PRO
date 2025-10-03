@@ -26,9 +26,13 @@ from stat_dialog.stat_dialog_ui import Ui_StatDialog
 from remove.remove import RemoveDialog
 
 from Save.save_dialog_ui import SaveDialog
-from Load.load_dialog_ui import Load
+from Load.load_dialog_ui import Load 
+from Load.load_csv import load_all_csv_to_db
 from Files.file_dialog import FileDialog
 import random
+
+# --- exp --- # 
+from demo.save_exp import SaveCSVHandler
 
 
 class LeagueViewPlayers(QWidget):
@@ -183,11 +187,12 @@ class LeagueViewPlayers(QWidget):
         self.save_widget.setModal(True)
 
         # Just instantiate and call setupUi once
-        self.save_ui = SaveDialog(self.league, self.message, self.file_dir, self.parent)
+        #self.save_ui = SaveDialog(self.league, self.message, self.file_dir, self.parent)
         #self.save_ui.setupUi(self.save_widget)
+        #self.save_ui.exec()
 
-        self.save_ui.exec()
-
+        save_ui = SaveCSVHandler(self.league, self.message, self.save_widget, self.db_path)
+        save_ui.run()
         
     def load_csv(self):
         print('loading csv to DB')
@@ -199,10 +204,12 @@ class LeagueViewPlayers(QWidget):
         self.load_ui.setupUi(self.load_widget)
         self.load_widget.exec()'''
         file = FileDialog(self.message, parent=self.parent, flag="load")
-        db_path, csv_path = file.open_dual_file_dialog()
+        csv_path = file.open_file_dialog()
 
-        load = Load(self.league, self.message, self.file_dir, db_path=db_path, csv_path=csv_path, parent=self)
-        load.load_master()
+        # deprecated
+        # load = Load(self.league, self.message, self.file_dir, csv_path=csv_path, parent=self)
+        # load.load_master()
+        load_all_csv_to_db(self.league, self.db_path, csv_path, "Saved/DB/League.db")
 
     def get_rand(self):
         rand = random.randint(1, 1000)
