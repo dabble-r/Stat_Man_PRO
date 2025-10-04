@@ -26,7 +26,7 @@ class Save():
     
   def db_exists(self):
     db_path = Path(self.db)
-    db_uri = f"file:{db_path}?mode=rw"
+    db_uri = f"file:{db_path}/League.db?mode=rw"
     try:
         con = sqlite3.connect(db_uri, uri=True, timeout=30)
         cur = con.cursor()
@@ -52,8 +52,8 @@ class Save():
         
 
     # Create new database
-    print(f"Creating new database at: {db_path}")
-    con = sqlite3.connect(db_path)
+    print(f"Creating new database at: {db_dir}")
+    con = sqlite3.connect(f"{db_path}/League.db")
     cur = con.cursor()
     return con, cur
 
@@ -342,6 +342,7 @@ class Save():
         dir_list = [x for x in attrs if self.sql_safe(x) and x in keep_2]  
       return dir_list
     
+    print("save league - open DB")
     con, cur = self.open_db()
     dir_list_1 = keep_attrs(self.league)
 
@@ -1032,10 +1033,12 @@ class Save():
   # ------------------------------------------------------------------------------------------------- #
   # currently in use
   def save_master(self, db_path, csv_path):
+    print("save master")
     result = self.open_db() 
     con = cur = None
     if result:
       con, cur = result
+      print('save master - con/cur:', con, cur)
     else:
       print('No League.db file!')
       self.init_new_db()
@@ -1043,26 +1046,27 @@ class Save():
     res = cur.execute("SELECT name from sqlite_master where type='table'")
     ret = [row[0] for row in res.fetchall()]
 
-    '''if len(ret) == 0:
-      print('no tables exist - init league')
+    print("save master - db fetch all:", res, ret)
+    if len(ret) == 0:
       self.init_new_db()
-    '''
-    if 'csv' not in self.selection:
-      #print('update team/player/pitcher fields')
-      #self.save_league()
-      self.save_team()
-      self.save_player()
 
-    
-    elif 'database' not in self.selection:
-      self.save_csv(db_path, csv_path) 
-    
-    else:
+    if 'csv' not in self.selection:
+      print('save master - no CSV option')
       self.save_league()
       self.save_team()
       self.save_player()
 
-      self.save_csv(db_path, csv_path)
+    elif 'database' not in self.selection:
+      print('save master - no DB option')
+      self.save_csv(db_path, csv_path) 
+    
+    else:
+      print('else option - save all')
+      self.save_league()
+      self.save_team()
+      self.save_player()
+
+      self.save_csv(f"{db_path}/League.db", csv_path)
 
     con.commit()
     con.close()

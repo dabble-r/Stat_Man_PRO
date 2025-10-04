@@ -12,7 +12,7 @@ from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
+    QFont, QFont, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QListWidget, QListWidgetItem,
@@ -30,6 +30,8 @@ from Load.load_dialog_ui import Load
 from Load.load_csv import load_all_csv_to_db
 from Files.file_dialog import FileDialog
 import random
+from pathlib import Path
+
 
 # --- exp --- # 
 from demo.save_exp import SaveCSVHandler
@@ -113,7 +115,6 @@ class LeagueViewPlayers(QWidget):
         self.btn_save = QPushButton("Save")
         self.btn_load = QPushButton("Load")
         
-
         self.btn_add_player.clicked.connect(self.new_player_handler)
         self.btn_add_team.clicked.connect(self.new_team_handler)
         self.btn_load.clicked.connect(self.load_csv)
@@ -136,8 +137,6 @@ class LeagueViewPlayers(QWidget):
         self.new_player_widget = QDialog(self.parent)
         self.ui = Ui_NewPlayer(self.tree1_top, self.leaderboard, self.league, self.file_dir, self.message, parent=self.new_player_widget)
         self.ui.setupUi(self.new_player_widget)
-
-        
 
         self.new_player_widget.setWindowTitle("Add New Player")
         #self.new_player_widget.setModal(True)
@@ -191,7 +190,7 @@ class LeagueViewPlayers(QWidget):
         #self.save_ui.setupUi(self.save_widget)
         #self.save_ui.exec()
 
-        save_ui = SaveCSVHandler(self.league, self.message, self.save_widget, self.db_path)
+        save_ui = SaveCSVHandler(self.league, self.message, self.save_widget)
         save_ui.run()
         
     def load_csv(self):
@@ -209,7 +208,7 @@ class LeagueViewPlayers(QWidget):
         # deprecated
         # load = Load(self.league, self.message, self.file_dir, csv_path=csv_path, parent=self)
         # load.load_master()
-        load_all_csv_to_db(self.league, self.db_path, csv_path, "Saved/DB/League.db")
+        load_all_csv_to_db(self.league, csv_path, "Saved/DB")
 
     def get_rand(self):
         rand = random.randint(1, 1000)
