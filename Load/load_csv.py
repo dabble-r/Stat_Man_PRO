@@ -10,6 +10,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from Save.save import init_new_db
 
+from League.game import Game 
+from League.linked_list import LinkedList 
+from League.player import Player, Pitcher 
+from League.team import Team
 
 
 # Map table names to their primary key
@@ -248,8 +252,16 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
         placeholders = ", ".join(["?"] * len(valid_columns))
         for row in reader:
             values = [row.get(col, None) for col in valid_columns]
+            table_hint = row.keys()
+            print("csv values: ", values)
+            print("row in reader-fields: ", row)
+            print("table hint - instance type: ", table_hint)
             if mode == "overwrite":
                 cursor.execute(f"INSERT OR REPLACE INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
+
+                load_all_to_gui(table_hint, values)
+                
+                
                 overwritten += 1
             elif mode == "skip":
                 if primary_key and primary_key in valid_columns:
@@ -265,7 +277,7 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
 
 
 # ----------------------- Full CSV Loader -----------------------
-def load_all_csv_to_db(league, directory: str, db_path: str):
+def load_all_csv_to_db(league, directory: str, db_path: str, parent=None):
     """
     Full workflow: session selection + database choice + overwrite choice + import + summary.
     """
@@ -278,7 +290,7 @@ def load_all_csv_to_db(league, directory: str, db_path: str):
 
     # Step 1: Session choice
     if len(sessions) > 1:
-        session_dialog = SessionChoiceDialog(sessions)
+        session_dialog = SessionChoiceDialog(sessions, parent=parent)
         session_dialog.exec()
         chosen_session = session_dialog.choice
         if not chosen_session:
@@ -290,7 +302,7 @@ def load_all_csv_to_db(league, directory: str, db_path: str):
     selected_files = sessions[chosen_session]
 
     # Step 2: Database choice
-    db_dialog = DatabaseChoiceDialog()
+    db_dialog = DatabaseChoiceDialog(parent=parent)
     db_dialog.exec()
     db_choice = db_dialog.choice
     if not db_choice:
@@ -322,7 +334,7 @@ def load_all_csv_to_db(league, directory: str, db_path: str):
         mode = "overwrite"  # assume new DB → overwrite
     else:
         # Step 3: Overwrite/skip/cancel choice
-        overwrite_dialog = OverwriteDialog()
+        overwrite_dialog = OverwriteDialog(parent=parent)
         overwrite_dialog.exec()
         mode = overwrite_dialog.choice
         if mode == "cancel":
@@ -339,8 +351,15 @@ def load_all_csv_to_db(league, directory: str, db_path: str):
         conn.close()
 
     # Step 5: Show summary
-    summary_dialog = SummaryDialog(summary)
+    summary_dialog = SummaryDialog(summary, parent=parent)
     summary_dialog.exec()
+
+def load_all_to_gui(attrs, vals):
+    lst_attr = [x for x in attrs]
+    lst_vals = [x for x in vals]
+    print("instance type: ", lst_attr[0])
+    print("attrs for gui: ", lst_attr)
+    print("vals for gui: ", lst_vals)
 
 
 if __name__ == "__main__":

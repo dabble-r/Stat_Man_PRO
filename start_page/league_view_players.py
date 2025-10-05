@@ -34,7 +34,7 @@ from pathlib import Path
 
 
 # --- exp --- # 
-from demo.save_exp import SaveCSVHandler
+from Save.save_exp import SaveCSVHandler
 
 
 class LeagueViewPlayers(QWidget):
@@ -208,7 +208,7 @@ class LeagueViewPlayers(QWidget):
         # deprecated
         # load = Load(self.league, self.message, self.file_dir, csv_path=csv_path, parent=self)
         # load.load_master()
-        load_all_csv_to_db(self.league, csv_path, "Saved/DB")
+        load_all_csv_to_db(self.league, csv_path, "Saved/DB/League.db", parent=self.parent)
 
     def get_rand(self):
         rand = random.randint(1, 1000)
