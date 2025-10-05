@@ -210,6 +210,8 @@ class SummaryDialog(QDialog):
         layout.addWidget(ok_btn, alignment=Qt.AlignCenter)
 
 
+
+
 # ----------------------- CSV Loader Utilities -----------------------
 def get_csv_files(directory: str) -> list:
     return glob.glob(os.path.join(directory, "*.csv"))
@@ -234,7 +236,7 @@ def group_csv_by_session(csv_files: list) -> dict:
     return sessions
 
 
-def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict):
+def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack):
     """Insert CSV into SQLite table according to overwrite/skip mode."""
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table})")
@@ -250,16 +252,20 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
         reader = csv.DictReader(csvfile)
         valid_columns = [col for col in reader.fieldnames if col in table_columns]
         placeholders = ", ".join(["?"] * len(valid_columns))
+
         for row in reader:
             values = [row.get(col, None) for col in valid_columns]
-            table_hint = row.keys()
-            print("csv values: ", values)
-            print("row in reader-fields: ", row)
-            print("table hint - instance type: ", table_hint)
+            
+            #print("csv values: ", values)
+            #print("row in reader-fields: ", row)
+            #print("table hint - instance type: ", table_hint)
+            
             if mode == "overwrite":
                 cursor.execute(f"INSERT OR REPLACE INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
 
-                load_all_to_gui(table_hint, values)
+                # load DB instances to GUI
+                stack.addRow(row)
+                stack.addValue(values)
                 
                 
                 overwritten += 1
@@ -274,16 +280,22 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
                 inserted += 1
     conn.commit()
     summary[table] = {"inserted": inserted, "skipped": skipped, "overwritten": overwritten, "error": False}
+    
+    
+    instances = stack.getInstances()
+    print('stack instances: ', instances)
 
 
 # ----------------------- Full CSV Loader -----------------------
-def load_all_csv_to_db(league, directory: str, db_path: str, parent=None):
+def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None):
     """
     Full workflow: session selection + database choice + overwrite choice + import + summary.
     """
     
     csv_files = get_csv_files(directory)
     sessions = group_csv_by_session(csv_files)
+    
+
     if not sessions:
         print("⚠️ No valid CSV session files found in directory.")
         return
@@ -346,7 +358,7 @@ def load_all_csv_to_db(league, directory: str, db_path: str, parent=None):
     summary = {}
     try:
         for table, filepath in selected_files:
-            insert_csv_to_table(table, filepath, conn, mode, summary)
+            insert_csv_to_table(table, filepath, conn, mode, summary, stack)
     finally:
         conn.close()
 
@@ -354,12 +366,6 @@ def load_all_csv_to_db(league, directory: str, db_path: str, parent=None):
     summary_dialog = SummaryDialog(summary, parent=parent)
     summary_dialog.exec()
 
-def load_all_to_gui(attrs, vals):
-    lst_attr = [x for x in attrs]
-    lst_vals = [x for x in vals]
-    print("instance type: ", lst_attr[0])
-    print("attrs for gui: ", lst_attr)
-    print("vals for gui: ", lst_vals)
 
 
 if __name__ == "__main__":

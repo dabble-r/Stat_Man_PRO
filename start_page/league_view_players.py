@@ -29,6 +29,7 @@ from Save.save_dialog_ui import SaveDialog
 from Load.load_dialog_ui import Load 
 from Load.load_csv import load_all_csv_to_db
 from Files.file_dialog import FileDialog
+from League.stack import InstanceStack
 import random
 from pathlib import Path
 
@@ -208,7 +209,8 @@ class LeagueViewPlayers(QWidget):
         # deprecated
         # load = Load(self.league, self.message, self.file_dir, csv_path=csv_path, parent=self)
         # load.load_master()
-        load_all_csv_to_db(self.league, csv_path, "Saved/DB/League.db", parent=self.parent)
+        stack = InstanceStack()
+        load_all_csv_to_db(self.league, csv_path, "Saved/DB/League.db", stack, parent=self.parent)
 
     def get_rand(self):
         rand = random.randint(1, 1000)
