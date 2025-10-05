@@ -1,6 +1,7 @@
 import math
 from League.node import NodeStack
 
+
 class Stack():
   def __init__(self):
     self.name = "Undo Stat Stack"
@@ -83,31 +84,58 @@ class InstanceStack():
         top = self.rows[-1]
         return top 
     
+    def topValue(self):
+        top = self.values[-1]
+        return top
+    
     def getTable(self):
         while len(self.rows) != 0:
           top = self.topRow()
           table_hint = list(top.keys())[0] 
           if table_hint in self.table_check:
-            self.popRow()
-            self.popValue()
             return table_hint
         return None
     
     def getType(self):
         table_hint = self.getTable()
+        value_hint = self.topValue()
+        zipped = list(zip(self.topRow(), value_hint))
+        temp = {}
         match table_hint:
             case "leagueID":
-                self.instances.insert(0, "league")
+                temp['league'] = zipped
+                self.instances.insert(0, temp)
+                temp = {}
                 
             case "teamID":
-                self.instances.insert(1, "team")
+                temp["team"] = zipped
+                self.instances.insert(1, temp)
+                temp = {}
                 
             case "playerID":
-                self.instances.append('player')
+                temp["player"] = zipped
+                self.instances.append(temp)
+                temp = {}
                 
             case "pitcherID":
-                self.instances.append('pitcher')
+                temp["pitcher"] = zipped
+                self.instances.append(temp)
+                temp = {}
+        self.popRow()
+        self.popValue()
 
+    def getLeague(self):
+        pass 
+    
+    def getTeam(self):
+        pass 
+    
+    def getPlayer(self):
+        pass 
+    
+    def getPitcher(self):
+        pass
+    
     def getInstances(self):
         self.getType()
         return self.instances

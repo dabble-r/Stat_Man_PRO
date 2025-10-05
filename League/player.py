@@ -79,7 +79,7 @@ class Player():
     self.name = name 
     self.playerID = self.get_hash()
     self.number = number 
-    self.team = team.name
+    self.team = team
     self.teamID = team.teamID 
     self.league = league
     self.leagueID = self.league.leagueID

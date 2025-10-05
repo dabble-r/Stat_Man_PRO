@@ -328,6 +328,21 @@ class LinkedList():
     ###print('Team not found')
     return None
   
+  def find_teamID(self, target):
+    traverser = self.head
+    if traverser == None:
+      ###print('No teams in league\n')
+      return None
+    if traverser.team.teamID == target:
+      return traverser.team
+    else:
+      while traverser.next != None:
+        if traverser.next.team.teamID == target:
+          return traverser.next.teamID
+        traverser = traverser.next 
+    ###print('Team not found')
+    return None
+  
   def find_player(self, target):
     traverser = self.head 
     if traverser == None:

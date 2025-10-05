@@ -9,12 +9,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from Save.save import init_new_db
-
 from League.game import Game 
 from League.linked_list import LinkedList 
 from League.player import Player, Pitcher 
 from League.team import Team
-
 
 # Map table names to their primary key
 PRIMARY_KEYS = {
@@ -236,11 +234,15 @@ def group_csv_by_session(csv_files: list) -> dict:
     return sessions
 
 
-def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack):
+def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack, parent):
     """Insert CSV into SQLite table according to overwrite/skip mode."""
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table})")
     table_columns = [info[1] for info in cursor.fetchall()]
+    league = LinkedList()
+
+    print('table cols: ', table_columns)
+
     if not table_columns:
         summary[table] = {"inserted": 0, "skipped": 0, "overwritten": 0, "error": True}
         return
@@ -253,22 +255,24 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
         valid_columns = [col for col in reader.fieldnames if col in table_columns]
         placeholders = ", ".join(["?"] * len(valid_columns))
 
+        print('valid cols: ', valid_columns)
+
         for row in reader:
             values = [row.get(col, None) for col in valid_columns]
             
-            #print("csv values: ", values)
+            print("csv values: ", values)
             #print("row in reader-fields: ", row)
             #print("table hint - instance type: ", table_hint)
             
             if mode == "overwrite":
                 cursor.execute(f"INSERT OR REPLACE INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
 
+                overwritten += 1
+
                 # load DB instances to GUI
                 stack.addRow(row)
                 stack.addValue(values)
-                
-                
-                overwritten += 1
+
             elif mode == "skip":
                 if primary_key and primary_key in valid_columns:
                     pk_value = row.get(primary_key)
@@ -278,13 +282,132 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
                         continue
                 cursor.execute(f"INSERT INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
                 inserted += 1
+
+                # load DB instances to GUI
+                stack.addRow(row)
+                stack.addValue(values)
+
     conn.commit()
     summary[table] = {"inserted": inserted, "skipped": skipped, "overwritten": overwritten, "error": False}
     
     
     instances = stack.getInstances()
-    print('stack instances: ', instances)
+    #print('stack instances: ', instances)
 
+    load_all_gui(instances, parent, league)
+
+def load_all_gui(instances, parent, league):
+    
+    for el in instances:
+        #print('el in instances: ', el)
+        key = list(el.keys()).pop()
+        vals = list(el.values()).pop()
+        # print(key, vals)
+
+        team_sample = Team(league, "team sample", "manager")
+
+        if key == 'league':
+            for el in vals: 
+                attr = el[0]
+                val = el[1]
+                if val == '__SQL_NULL__':
+                    continue
+                print('league: ', attr, val)
+                load_league_gui(attr, val, league)
+
+        elif key == 'team':
+            # temp team instance
+            team = Team(league, 'team', 'manager')
+            for el in vals:
+                attr = el[0]
+                val = el[1]
+                if attr == 'players':
+                    print('players: ', val)
+                    continue
+                elif attr == 'lineup':
+                    print('lineup: ', val)
+                    load_team_gui(attr, val, team)
+                elif attr == 'positions':
+                    print('team positions: ', val)
+                    load_team_gui(attr, val, team)
+                else:
+                    print('team stat: ', attr, val)
+                    if val == 0 or val == '0' or val == 0.0 or val == '0.0': 
+                        continue
+                    load_team_gui(attr, val, team)
+            league.add_team(team)
+
+        elif key == 'player':
+            player = Player('player', 0, team_sample, league)
+            team = find_team = None
+            for el in vals:
+                attr = el[0]
+                val = el[1]
+                #print('attr in player:', attr)
+                if attr == 'positions':
+                    print("player positions: ", val)
+                    load_player_gui(attr, val, player)
+                elif attr == 'teamID':
+                    #print('team attr match!')
+                    teamID = val
+                    find_team = league.find_teamID(teamID)
+                    team_name = find_team.name
+                    load_player_gui(attr, team_name, player)
+                else:
+                    print("player stat: ", attr, val)
+                    if val == 0 or val == '0' or val == 0.0 or val == '0.0':
+                        continue 
+                    load_player_gui(attr, val, player)
+            
+            find_team.add_player(player)
+            #print(find_team.players)
+            print('player update: ', player)
+
+        # find team by id 
+        # find player by id on team 
+        # update player with pitcher stats
+        elif key == 'pitcher':
+            pitcher = Pitcher('pitcher', 0, 'team', league)
+            team = find_team = None
+            for el in vals:
+                attr = el[0]
+                val = el[1]
+                print('attr in pitcher:', attr)
+                if attr == 'teamID':
+                    teamID = val
+                    find_team = league.find_teamID(teamID) 
+                    team_name = find_team.name
+                    load_player_gui(attr, team_name, player)
+                else:
+                    print('pitcher stat: ', attr, val)
+                    if val == 0 or val == '0' or val == 0.0 or val == '0.0':
+                        continue 
+                    load_pitcher_gui(attr, val, pitcher)
+            find_team.add_player(pitcher)
+            #print(find_team.players)
+            print('pitcher update: ', pitcher)
+        
+
+    # assign Main Window - league - inherited by all - with CSV load
+    setattr(parent, 'league', league)
+
+    # returns empty string if no teams
+    #print(league.view_all())
+
+    # call refresh tree widget views after Main Window league updated
+
+            
+def load_league_gui(attr, val, league):
+    setattr(league, attr, val)
+
+def load_team_gui(attr, val, team):
+    setattr(team, attr, val)
+
+def load_player_gui(attr, val, player):
+    setattr(player, attr, val) 
+
+def load_pitcher_gui(attr, val, pitcher):
+    setattr(pitcher, attr, val)
 
 # ----------------------- Full CSV Loader -----------------------
 def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None):
@@ -294,7 +417,6 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
     
     csv_files = get_csv_files(directory)
     sessions = group_csv_by_session(csv_files)
-    
 
     if not sessions:
         print("⚠️ No valid CSV session files found in directory.")
@@ -358,7 +480,7 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
     summary = {}
     try:
         for table, filepath in selected_files:
-            insert_csv_to_table(table, filepath, conn, mode, summary, stack)
+            insert_csv_to_table(table, filepath, conn, mode, summary, stack, parent)
     finally:
         conn.close()
 

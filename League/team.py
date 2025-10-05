@@ -424,7 +424,7 @@ class Team():
 # modify team
 
   def add_player(self, new_player):
-    if len(self.players) < self.max_roster:
+    if len(self.players) < int(self.max_roster):
       self.players.append(new_player)
     else:
       ##print('Roster is full')
