@@ -701,6 +701,9 @@ class Save():
       dir_list = [x for x in keep if self.sql_safe(x)]
       return dir_list
     
+    def isPitcher(obj):
+      return "pitcher" in obj.positions 
+    
     con, cur = self.open_db()
 
     if not self.table_exists(con, cur, 'team'):
@@ -733,7 +736,7 @@ class Save():
           player_name = player.name 
           player_ID = player.playerID
           player_team_ID = player.teamID 
-          isPitcher = 'pitcher' in player.positions 
+          checkPitcher = isPitcher(player)
           
           # does player exist in DB ???
           if player_ID in ret:
@@ -741,15 +744,16 @@ class Save():
 
             # is the player a pitcher?
             # if yes, update pitcher and update player tables
-            if isPitcher:
+            if checkPitcher:
               #print('match pitcher, wish to update?')
               self.update_pitcher(con, cur, player, keep_attrs_pitcher)
               self.update_player(con, cur, player, keep_attrs_player) 
-              continue
+              #continue 
 
-            # if not, update player table only
-            self.update_player(con, cur, player, keep_attrs_player)
-            continue
+            else:
+              # if not, update player table only
+              self.update_player(con, cur, player, keep_attrs_player)
+              #continue
 
           # if playerID not in DB, create new player
           elif player_ID not in ret:
@@ -760,7 +764,7 @@ class Save():
 
             # if player is a pitcher 
             # exclude players attrs, except name, playerID, teamID, leagueID
-            if isPitcher:
+            if checkPitcher:
               #print('is a pitcher')
               res = cur.execute("SELECT playerID FROM pitcher")
               ret = [row[0] for row in res.fetchall()]
