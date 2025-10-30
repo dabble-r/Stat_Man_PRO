@@ -9,10 +9,13 @@ RESTRUCTURING_SUMMARY.md
 REMOVED_FOLDERS.txt
 CLEANUP_COMPLETE.md
 BEFORE_AFTER.md
+PATH_UPDATES.md
+PATH_UPDATE_SUMMARY.md
 update_imports.py
 verify_structure.py
 to_do.txt
 archive/demo/*
+docs/* 
 
 # Virtual Environment
 myenv/

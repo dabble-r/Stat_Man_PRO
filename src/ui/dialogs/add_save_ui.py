@@ -85,7 +85,7 @@ class Ui_Add_Save(QWidget, object):
         # Get league, message, and file_dir from league_view_players
         league = self.league_view_players.league if hasattr(self.league_view_players, 'league') else None
         message = self.league_view_players.message if hasattr(self.league_view_players, 'message') else None
-        file_dir = self.league_view_players.file_dir if hasattr(self.league_view_players, 'file_dir') else "Saved"
+        file_dir = self.league_view_players.file_dir if hasattr(self.league_view_players, 'file_dir') else "data"
         
         if not league or not message:
             print("Error: Cannot save - league or message not available")

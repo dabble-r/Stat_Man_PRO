@@ -56,7 +56,7 @@ class FileDialog(QWidget):
         # --- Validate and Store Paths ---
         try:
             if os.path.isfile(csv_file):
-                self.db_file_path = db_file if db_file is not None else f"{self.file_dir}/Saved/DB/League.db"
+                self.db_file_path = db_file if db_file is not None else f"{self.file_dir}/data/database/League.db"
                 self.csv_file_path = csv_file
                 print(f"Selected DB file: {db_file}")
                 print(f"Selected CSV file: {csv_file}")
@@ -158,14 +158,14 @@ class FileDialog(QWidget):
     def get_file_dir(self):
         if self.os_type == 'Windows':
             print('Windows')
-            new_dir = os.path.join(self.cwd, "Saved")
+            new_dir = os.path.join(self.cwd, "data")
             if not os.path.exists(new_dir):
                 os.mkdir(new_dir)
             return new_dir
 
         elif self.os_type == 'Linux':
             print('Linux')
-            new_dir = f"{self.cwd}/Saved"
+            new_dir = f"{self.cwd}/data"
             isExist = os.path.exists(new_dir)
             if not isExist:
                 os.mkdir(new_dir)

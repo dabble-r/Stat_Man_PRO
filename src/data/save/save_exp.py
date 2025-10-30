@@ -51,7 +51,7 @@ class FolderNameDialog(QDialog):
 
 # --- The main handler that performs the save logic --------------------------
 class SaveCSVHandler:
-    def __init__(self, league, message, parent_widget: QWidget, db_path: Path = Path("Saved") / "DB", csv_path: Path = Path("Saved") / "CSV"):
+    def __init__(self, league, message, parent_widget: QWidget, db_path: Path = Path("data") / "database", csv_path: Path = Path("data") / "exports"):
         self.parent = parent_widget
         self.db_path = db_path
         self.csv_path = csv_path
@@ -59,8 +59,8 @@ class SaveCSVHandler:
         self.message = message
         
         # Construct proper paths: full database file path and base directory
-        db_file_path = self.db_path / "League.db"  # Full path: Saved/DB/League.db
-        base_dir = Path("Saved")  # Base directory for file_dir
+        db_file_path = self.db_path / "League.db"  # Full path: data/database/League.db
+        base_dir = Path("data")  # Base directory for file_dir
         
         # if no League.db exists, init new db
         self.save_csv = Save(db_file_path, league, self.message, base_dir, ['csv', 'database'])
@@ -68,11 +68,11 @@ class SaveCSVHandler:
     def run(self):
         try:
             # Ensure base directory exists
-            # base dir: Saved/CSV
+            # base dir: data/exports
             self.csv_path.mkdir(parents=True, exist_ok=True)
         except Exception as e:
             QMessageBox.critical(self.parent, "Filesystem error",
-                                 f"Could not create base Saved/CSV directory:\n{e}")
+                                 f"Could not create base data/exports directory:\n{e}")
             return
         
         # Show folder name dialog
