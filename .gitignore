@@ -4,6 +4,13 @@ __pycache__/
 *$py.class
 *.so
 .Python
+
+
+to_do.txt
+archive/
+Documentation/
+
+#md files 
 RESTRUCTURING_GUIDE.md
 RESTRUCTURING_SUMMARY.md
 REMOVED_FOLDERS.txt
@@ -12,11 +19,9 @@ BEFORE_AFTER.md
 PATH_UPDATES.md
 PATH_UPDATE_SUMMARY.md
 ICON_FIX.md
-update_imports.py
-verify_structure.py
-to_do.txt
-archive/
-Documentation/
+
+#test 
+tests/*
 
 # Virtual Environment
 myenv/
