@@ -256,11 +256,15 @@ class Team():
   def get_bat_avg(self):                return self.bat_avg
 
   def get_player(self, target):
+    def _norm(s):
+      try:
+        return str(s).strip().lower()
+      except Exception:
+        return s
+    target_n = _norm(target)
     for el in self.players:
-      if el.name == target:
-        ###print(el)
+      if _norm(el.name) == target_n:
         return el
-    ###print('Player not found')
     return
 
   def get_manager(self):                return self.manager 

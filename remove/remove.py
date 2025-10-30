@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QWidget, QDialog, QLabel, QLineEdit, QPushButton, 
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from start_page.league_view_teams import LeagueViewTeams
+from League.linked_list import LinkedList
 
 import random
 
@@ -63,7 +64,7 @@ class RemoveDialog(QDialog):
     def remove_current_view(self):
         #print('current view') 
 
-        if self.league.COUNT == 0:
+        if LinkedList.COUNT == 0:
             #print('no teams in league')
             return 
         
@@ -91,7 +92,7 @@ class RemoveDialog(QDialog):
     def remove_league(self):
         #print('league before:', self.league)
 
-        if self.league.COUNT == 0:
+        if LinkedList.COUNT == 0:
             #print('no teams in league')
             return 
         

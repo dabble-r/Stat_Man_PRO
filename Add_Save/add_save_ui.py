@@ -82,10 +82,17 @@ class Ui_Add_Save(QWidget, object):
     
     def save_handler(self):
         print('saving progress')
-        self.save_widget = QDialog()
-        self.save_dialog_ui = Ui_SaveDialog()
-        self.save_dialog_ui.setupUi(self.save_widget)
-        self.save_widget.setWindowTitle("Save Progress")
+        # Get league, message, and file_dir from league_view_players
+        league = self.league_view_players.league if hasattr(self.league_view_players, 'league') else None
+        message = self.league_view_players.message if hasattr(self.league_view_players, 'message') else None
+        file_dir = self.league_view_players.file_dir if hasattr(self.league_view_players, 'file_dir') else "Saved"
+        
+        if not league or not message:
+            print("Error: Cannot save - league or message not available")
+            return
+        
+        # Use the correct SaveDialog class with required parameters
+        self.save_widget = SaveDialog(league, message, file_dir, parent=None)
         self.save_widget.setModal(True)
         self.save_widget.exec()
 

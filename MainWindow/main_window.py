@@ -33,6 +33,7 @@ class MainWindow(QWidget):
         self.stack = Stack()
         self.app = app
         
+        
         self.undo = Undo(self.stack, self.league)
         #self.file_dir = None
         self.message = Message(self.styles, parent=self)
@@ -111,7 +112,7 @@ class MainWindow(QWidget):
         self.v_layout_buttons_bottom.addWidget(self.btn_refresh)
         self.buttons_bottom.append(self.btn_refresh)
         #self.button_group_bottom.addButton(self.btn_refresh)
-        self.btn_refresh.clicked.connect(self.refresh_view)
+        self.btn_refresh.clicked.connect(self.on_refresh_button_clicked)
 
          # ------------------------------------------------------------- #
 
@@ -211,16 +212,28 @@ class MainWindow(QWidget):
         team = None 
         avg = None
         
+        selection_result = self.selected_is_none()
+        print(f"get_item called with function: {func.__name__}")
+        print(f"selected_is_none() returned: {selection_result}")
+        
         if not self.selected_is_none():
             ##print('league')
             ##print('func:', func.__name__)
             func_name = func.__name__
             
             if func_name == 'setup_update_ui':
+                # When nothing is selected, Update button shows league settings
                 self.setup_league_ui()
 
             elif func_name == 'setup_stat_ui':
-                self.setup_stat_ui()
+                # When nothing is selected, Stat button should show a warning
+                QMessageBox.warning(self, "No Selection", "Please select a team or player to view stats.")
+                return
+            
+            elif func_name == 'setup_remove_ui':
+                # When nothing is selected, Remove button should show a warning
+                QMessageBox.warning(self, "No Selection", "Please select a team or player to remove.")
+                return
             
         elif self.selected_is_none():
             curr = self.selected_is_none()[0]
@@ -245,13 +258,16 @@ class MainWindow(QWidget):
         ##print("nothing selected")
     
     def setup_stat_ui(self):
-        ##print("view stats")
+        print("Stat button clicked")
+        print(f"Selected item: {self.selected}")
+        if not self.selected or len(self.selected) == 0:
+            QMessageBox.warning(self, "No Selection", "Please select a team or player to view stats.")
+            return
         
-        #print('selected before:', self.selected)
         self.stat_ui = Ui_StatDialog(self.league, self.message, self.selected, self.styles, parent=self.stat_widget)
         self.stat_ui.get_stats(self.selected)
         self.stat_ui.exec()
-        #print('selected after:', self.selected)
+        print("Stat dialog closed")
         
         #self.stat_widget.setWindowTitle(f"Stats")
         #self.stat_widget.setModal(True)
@@ -270,9 +286,14 @@ class MainWindow(QWidget):
         dialog.exec()
     
     def setup_remove_ui(self):
-        ##print("remove item")
+        print("Remove button clicked")
+        print(f"Selected item: {self.selected}")
+        if not self.selected or len(self.selected) == 0:
+            QMessageBox.warning(self, "No Selection", "Please select a team or player to remove.")
+            return
         dialog = RemoveDialog(self.league, self.selected, self.leaderboard, self.league_view_teams, self.league_view_players, parent=self)
         dialog.exec()
+        print("Remove dialog closed")
     
     def setup_league_ui(self):
         #dialog = UpdateLeagueDialog(self.league, self.selected, self.message, self.leaderboard, self.league_view_teams, self.stack, self.undo, self.styles, parent=self)
@@ -283,8 +304,20 @@ class MainWindow(QWidget):
         #QTimer.singleShot(0, lambda: self.pos_center(dialog))
         self.league_dialog.exec()
 
+    def on_refresh_button_clicked(self):
+        """Handler for when the user clicks the Refresh button"""
+        print("Refresh button clicked by user")
+        print(f"LinkedList.COUNT (class var): {LinkedList.COUNT}")
+        if LinkedList.COUNT == 0:
+            QMessageBox.information(self, "No Data", "There are no teams or players to refresh. Please load data first.")
+            return
+        self.refresh_view()
+    
     def refresh_view(self):
+        """Refresh the GUI views - can be called by button or programmatically"""
+        print(f"Refreshing views (LinkedList.COUNT: {LinkedList.COUNT})")
         self.refresh.restore_all()
+        print("Refresh completed")
 
     def pos_center(self, dialog):
         screen = self.app.primaryScreen()

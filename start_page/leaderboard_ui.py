@@ -92,12 +92,15 @@ class Leaderboard(QWidget, object):
             team = new_player.team
             positions = new_player.positions 
             avg = new_player.AVG
-            return (name, number, team, positions, avg)
+            # ensure team is a string name for display
+            team_name = team.name if hasattr(team, 'name') else team
+            return (name, number, team_name, positions, avg)
 
     def add_leaderboard_list(self, args):
         name, number, team, positions, avg = args
         self.remove_dup(args)
         self.leaderboard_list.append((name, team, str(avg)))
+        print('leaderboard - team name:', name, team, avg)
 
     def sort_leaderboard(self):
         self.leaderboard_list.sort(key=self.my_sort)
@@ -156,12 +159,15 @@ class Leaderboard(QWidget, object):
     
     def restore_items(self):
         players = self.league.get_all_players_avg() # name only
-        ###print('players:', players)
+        print('players:', players)
 
         for el in players:
             temp = el[0]
             if temp not in [x[0] for x in self.leaderboard_list]: # name only 
-                self.leaderboard_list.append((el[0], el[1], el[2]))
+                name = el[0]
+                team = el[1].name
+                avg = el[2]
+                self.leaderboard_list.append((name, team, avg))
         self.sort_leaderboard()
         self.insert_widget()
 

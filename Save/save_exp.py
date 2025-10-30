@@ -57,8 +57,13 @@ class SaveCSVHandler:
         self.csv_path = csv_path
         self.league = league
         self.message = message
+        
+        # Construct proper paths: full database file path and base directory
+        db_file_path = self.db_path / "League.db"  # Full path: Saved/DB/League.db
+        base_dir = Path("Saved")  # Base directory for file_dir
+        
         # if no League.db exists, init new db
-        self.save_csv = Save(self.db_path, league, self.message, self.csv_path, ['csv', 'database'])
+        self.save_csv = Save(db_file_path, league, self.message, base_dir, ['csv', 'database'])
     
     def run(self):
         try:
@@ -94,6 +99,7 @@ class SaveCSVHandler:
                 # Overwrite flow
                 try:
                     self._clear_csvs_in_folder(target_folder)
+                    
                 except Exception as e:
                     QMessageBox.critical(self.parent, "Error clearing folder",
                                          f"Could not clear CSV files in folder:\n{e}")

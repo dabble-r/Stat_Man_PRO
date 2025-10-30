@@ -365,7 +365,8 @@ class Ui_StatDialog(QDialog):
         elif len(selected) == 2:
             team, avg = selected 
             find_team = self.league.find_team(team)
-
+            print('team stat ui - search:', find_team)
+            
             # experimental - team era 
             team_era = self.league.get_team_era()
             ##print('team era', team_era)

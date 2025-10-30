@@ -4,11 +4,13 @@ import re
 import glob
 import csv
 import sqlite3
+import json
 from PySide6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QLabel, QPushButton, QScrollArea, QWidget, QHBoxLayout, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from Save.save import init_new_db
+from League.stack import InstanceStack
 from League.game import Game 
 from League.linked_list import LinkedList 
 from League.player import Player, Pitcher 
@@ -212,7 +214,8 @@ class SummaryDialog(QDialog):
 
 # ----------------------- CSV Loader Utilities -----------------------
 def get_csv_files(directory: str) -> list:
-    return glob.glob(os.path.join(directory, "*.csv"))
+    # Search recursively to include session subfolders like CSV/save_1/*.csv
+    return glob.glob(os.path.join(directory, "**", "*.csv"), recursive=True)
 
 
 def group_csv_by_session(csv_files: list) -> dict:
@@ -234,12 +237,12 @@ def group_csv_by_session(csv_files: list) -> dict:
     return sessions
 
 
-def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack, parent):
+def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack: InstanceStack, parent, league: LinkedList):
     """Insert CSV into SQLite table according to overwrite/skip mode."""
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table})")
     table_columns = [info[1] for info in cursor.fetchall()]
-    league = LinkedList()
+    # use the provided league instance so teams/players accumulate across tables
 
     print('table cols: ', table_columns)
 
@@ -265,13 +268,23 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
             #print("table hint - instance type: ", table_hint)
             
             if mode == "overwrite":
+                # Check if row exists to distinguish insert vs replace
+                existed = False
+                if primary_key and primary_key in valid_columns:
+                    pk_value = row.get(primary_key)
+                    cursor.execute(f"SELECT 1 FROM {table} WHERE {primary_key} = ?", (pk_value,))
+                    existed = cursor.fetchone() is not None
+                
                 cursor.execute(f"INSERT OR REPLACE INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
 
-                overwritten += 1
+                if existed:
+                    overwritten += 1
+                else:
+                    inserted += 1
 
-                # load DB instances to GUI
-                stack.addRow(row)
-                stack.addValue(values)
+                # collect ordered row aligned to valid_columns and annotate table
+                ordered = {col: row.get(col, None) for col in valid_columns}
+                stack.add(table, ordered, values)
 
             elif mode == "skip":
                 if primary_key and primary_key in valid_columns:
@@ -283,120 +296,366 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
                 cursor.execute(f"INSERT INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
                 inserted += 1
 
-                # load DB instances to GUI
-                stack.addRow(row)
-                stack.addValue(values)
+                # collect ordered row aligned to valid_columns and annotate table
+                ordered = {col: row.get(col, None) for col in valid_columns}
+                stack.add(table, ordered, values)
 
     conn.commit()
     summary[table] = {"inserted": inserted, "skipped": skipped, "overwritten": overwritten, "error": False}
     
     
-    instances = stack.getInstances()
-    #print('stack instances: ', instances)
-
-    load_all_gui(instances, parent, league)
+    # Defer building GUI until all tables are processed. Instances
+    # will be collected across calls via the shared InstanceStack.
 
 def load_all_gui(instances, parent, league):
-    
-    for el in instances:
-        #print('el in instances: ', el)
-        key = list(el.keys()).pop()
-        vals = list(el.values()).pop()
-        # print(key, vals)
+    # Process in deterministic order: league -> team -> player -> pitcher
+    league_items = []
+    team_items = []
+    player_items = []
+    pitcher_items = []
 
-        team_sample = Team(league, "team sample", "manager")
-
+    for item in instances:
+        key = list(item.keys()).pop()
         if key == 'league':
-            for el in vals: 
-                attr = el[0]
-                val = el[1]
-                if val == '__SQL_NULL__':
-                    continue
-                print('league: ', attr, val)
-                load_league_gui(attr, val, league)
-
+            league_items.append(item)
         elif key == 'team':
-            # temp team instance
-            team = Team(league, 'team', 'manager')
-            for el in vals:
-                attr = el[0]
-                val = el[1]
-                if attr == 'players':
-                    print('players: ', val)
-                    continue
-                elif attr == 'lineup':
-                    print('lineup: ', val)
-                    load_team_gui(attr, val, team)
-                elif attr == 'positions':
-                    print('team positions: ', val)
-                    load_team_gui(attr, val, team)
-                else:
-                    print('team stat: ', attr, val)
-                    if val == 0 or val == '0' or val == 0.0 or val == '0.0': 
-                        continue
-                    load_team_gui(attr, val, team)
-            league.add_team(team)
-
+            team_items.append(item)
         elif key == 'player':
-            player = Player('player', 0, team_sample, league)
-            team = find_team = None
-            for el in vals:
-                attr = el[0]
-                val = el[1]
-                #print('attr in player:', attr)
-                if attr == 'positions':
-                    print("player positions: ", val)
-                    load_player_gui(attr, val, player)
-                elif attr == 'teamID':
-                    #print('team attr match!')
-                    teamID = val
-                    find_team = league.find_teamID(teamID)
-                    team_name = find_team.name
-                    load_player_gui(attr, team_name, player)
-                else:
-                    print("player stat: ", attr, val)
-                    if val == 0 or val == '0' or val == 0.0 or val == '0.0':
-                        continue 
-                    load_player_gui(attr, val, player)
-            
-            find_team.add_player(player)
-            #print(find_team.players)
-            print('player update: ', player)
-
-        # find team by id 
-        # find player by id on team 
-        # update player with pitcher stats
+            player_items.append(item)
         elif key == 'pitcher':
-            pitcher = Pitcher('pitcher', 0, 'team', league)
-            team = find_team = None
-            for el in vals:
-                attr = el[0]
-                val = el[1]
-                print('attr in pitcher:', attr)
-                if attr == 'teamID':
-                    teamID = val
-                    find_team = league.find_teamID(teamID) 
-                    team_name = find_team.name
-                    load_player_gui(attr, team_name, player)
+            pitcher_items.append(item)
+
+    # League
+    for item in league_items:
+        vals = list(item.values()).pop()
+        for el in vals:
+            attr = el[0]
+            val = el[1]
+            if val == '__SQL_NULL__':
+                continue
+            load_league_gui(attr, val, league)
+
+    # Teams
+    for item in team_items:
+        vals = list(item.values()).pop()
+        team = Team(league, 'team', 'manager')
+        for el in vals:
+            attr = el[0]
+            val = el[1]
+            if attr in ('players',):
+                continue
+            elif attr in ('lineup', 'positions'):
+                # parse JSON if string
+                try:
+                    parsed = json.loads(val) if isinstance(val, str) else val
+                except Exception:
+                    parsed = val
+                load_team_gui(attr, parsed, team)
+            elif attr in ('teamID', 'leagueID'):
+                # normalize numeric ids (handle '01', '1 ', '1.0')
+                def _normalize_id_local(v):
+                    try:
+                        return int(v)
+                    except Exception:
+                        pass
+                    try:
+                        s = str(v).strip().strip('"').strip("'")
+                        if '.' in s:
+                            f = float(s)
+                            if f.is_integer():
+                                return int(f)
+                        if s.isdigit():
+                            return int(s)
+                        return s
+                    except Exception:
+                        return v
+                norm = _normalize_id_local(val)
+                load_team_gui(attr, norm, team)
+            else:
+                if val in (0, '0', 0.0, '0.0'):
+                    continue
+                load_team_gui(attr, val, team)
+        league.add_team(team)
+    print('league after load', league)
+    print('league after load', league.view_all())
+    print(f'LinkedList.COUNT (class var): {LinkedList.COUNT}')
+    print(f'league.COUNT (checking if instance var exists): {getattr(league, "COUNT", "No instance var - using class var")}')
+
+    # Build quick-lookup maps for teams
+    def _norm_name(s):
+        try:
+            return str(s).strip().lower()
+        except Exception:
+            return s
+    team_name_map = { _norm_name(t.name): t for t in league.get_all_objs() }
+    team_id_map = { str(getattr(t, 'teamID', '')).strip(): t for t in league.get_all_objs() }
+
+    # Helper: normalize ids from CSV and robust team resolve by ID or name
+    def _normalize_id(v):
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except Exception:
+            pass
+        try:
+            s = str(v).strip().strip('"').strip("'")
+            if '.' in s:
+                f = float(s)
+                if f.is_integer():
+                    return int(f)
+            # JSON numeric
+            try:
+                j = json.loads(s)
+                if isinstance(j, (int, float)):
+                    jf = float(j)
+                    return int(jf) if jf.is_integer() else s
+            except Exception:
+                pass
+            if s.isdigit():
+                return int(s)
+            return s
+        except Exception:
+            return v
+
+    def _resolve_team_by_id_or_name(id_val, name_val):
+        # Try by ID first
+        if id_val is not None:
+            norm_id = _normalize_id(id_val)
+            if isinstance(norm_id, int):
+                found = league.find_teamID(norm_id)
+                if found is not None:
+                    return found
+            # fallback: compare as strings
+            try:
+                target = str(norm_id if norm_id is not None else id_val).strip()
+                if target in team_id_map:
+                    return team_id_map[target]
+            except Exception:
+                pass
+        # Try by name next
+        if name_val:
+            try:
+                by_map = team_name_map.get(_norm_name(name_val))
+                if by_map:
+                    return by_map
+                return league.find_team(name_val)
+            except Exception:
+                return None
+        return None
+
+    # Players
+    for item in player_items:
+        vals = list(item.values()).pop()
+        # Temporary minimal team placeholder; will reassign to real team
+        team_sample = Team(league, "team sample", "manager")
+        player = Player('player', 0, team_sample, league)
+        find_team = None
+        fallback_team_name = None
+        captured_player_id = None
+        pending_team_id = None
+        parsed_positions = []
+        for el in vals:
+            attr = el[0]
+            val = el[1]
+            if attr == 'positions':
+                # parse positions JSON
+                try:
+                    parsed = json.loads(val) if isinstance(val, str) else val
+                except Exception:
+                    parsed = val
+                load_player_gui(attr, parsed, player)
+                try:
+                    parsed_positions = list(parsed)
+                except Exception:
+                    parsed_positions = []
+            elif attr == 'teamID':
+                # store as int if possible
+                try:
+                    pending_team_id = int(val)
+                except Exception:
+                    pending_team_id = val
+                # also set attribute with normalized int
+                try:
+                    load_player_gui(attr, int(val), player)
+                except Exception:
+                    load_player_gui(attr, val, player)
+            elif attr == 'playerID':
+                try:
+                    captured_player_id = int(val)
+                    load_player_gui(attr, captured_player_id, player)
+                except Exception:
+                    captured_player_id = val
+                    load_player_gui(attr, val, player)
+            elif attr == 'team':
+                fallback_team_name = val
+                # still set field on player for completeness
+                load_player_gui(attr, val, player)
+            else:
+                if val in (0, '0', 0.0, '0.0'):
+                    continue
+                load_player_gui(attr, val, player)
+        # resolve team after reading all attrs: by name first per requirement, then by ID
+        if fallback_team_name:
+            try:
+                # prefer map for case-insensitive/trim matches
+                find_team = team_name_map.get(_norm_name(fallback_team_name)) or league.find_team(fallback_team_name)
+            except Exception:
+                find_team = None
+        if find_team is None and pending_team_id is not None:
+            find_team = _resolve_team_by_id_or_name(pending_team_id, None)
+        # if player is a pitcher per positions, convert to Pitcher
+        if 'pitcher' in parsed_positions:
+            temp = player
+            pitcher_player = Pitcher(temp.name, temp.number, temp.team, temp.league, positions=parsed_positions)
+            # copy offense stats and ids
+            for k in ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly','OBP','BABIP','SLG','AVG','ISO','image','playerID','leagueID','teamID']:
+                setattr(pitcher_player, k, getattr(temp, k, getattr(pitcher_player, k, 0)))
+            player = pitcher_player
+
+        if find_team is not None:
+            # attach and fix references, avoid duplicates (prefer playerID match)
+            player.team = find_team
+            player.teamID = find_team.teamID
+            player.league = league
+            player.leagueID = league.leagueID
+            exists = False
+            pid = getattr(player, 'playerID', None)
+            for existing in find_team.players:
+                if pid is not None and getattr(existing, 'playerID', None) == pid:
+                    exists = True
+                    break
+                if pid is None and existing.name == player.name:
+                    exists = True
+                    break
+            if not exists:
+                find_team.add_player(player)
+        else:
+            print(f"Warning: team not found for player {getattr(player, 'name', '')} (teamID/team name mismatch)")
+
+    # Pitchers
+    for item in pitcher_items:
+        vals = list(item.values()).pop()
+        pitcher = Pitcher('pitcher', 0, 'team', league)
+        find_team = None
+        fallback_team_name = None
+        captured_player_id = None
+        pending_team_id = None
+        for el in vals:
+            attr = el[0]
+            val = el[1]
+            if attr == 'teamID':
+                try:
+                    pending_team_id = int(val)
+                    load_player_gui(attr, pending_team_id, pitcher)
+                except Exception:
+                    pending_team_id = val
+                    load_player_gui(attr, val, pitcher)
+            elif attr == 'playerID':
+                try:
+                    captured_player_id = int(val)
+                except Exception:
+                    captured_player_id = val
+                load_player_gui(attr, captured_player_id, pitcher)
+            elif attr == 'team':
+                fallback_team_name = val
+                load_player_gui(attr, val, pitcher)
+            else:
+                if val in (0, '0', 0.0, '0.0'):
+                    continue 
+                load_pitcher_gui(attr, val, pitcher)
+        # resolve team after reading all attrs: by name first per requirement, then by ID
+        if fallback_team_name:
+            try:
+                find_team = team_name_map.get(_norm_name(fallback_team_name)) or league.find_team(fallback_team_name)
+            except Exception:
+                find_team = None
+        if find_team is None and pending_team_id is not None:
+            find_team = _resolve_team_by_id_or_name(pending_team_id, None)
+        if find_team is not None:
+            # If a matching player already exists, upgrade/merge
+            existing_index = None
+            existing_player = None
+            if captured_player_id is not None:
+                for idx, p in enumerate(find_team.players):
+                    if getattr(p, 'playerID', None) == captured_player_id:
+                        existing_index = idx
+                        existing_player = p
+                        break
+            if existing_player is not None:
+                # Preserve offense stats and identity, replace with Pitcher subtype if needed
+                if not isinstance(existing_player, Pitcher):
+                    new_pitcher = Pitcher(existing_player.name, existing_player.number, find_team, league, positions=existing_player.positions)
+                    # copy offensive stats
+                    for k in ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly','OBP','BABIP','SLG','AVG','ISO','image','playerID','leagueID','teamID']:
+                        setattr(new_pitcher, k, getattr(existing_player, k, getattr(new_pitcher, k, 0)))
+                    # merge pitcher stats from current pitcher instance
+                    for k in ['wins','losses','era','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']:
+                        setattr(new_pitcher, k, getattr(pitcher, k, getattr(new_pitcher, k, 0)))
+                    # ensure positions includes pitcher
+                    try:
+                        if 'pitcher' not in new_pitcher.positions:
+                            new_pitcher.positions.append('pitcher')
+                    except Exception:
+                        pass
+                    find_team.players[existing_index] = new_pitcher
                 else:
-                    print('pitcher stat: ', attr, val)
-                    if val == 0 or val == '0' or val == 0.0 or val == '0.0':
-                        continue 
-                    load_pitcher_gui(attr, val, pitcher)
-            find_team.add_player(pitcher)
-            #print(find_team.players)
-            print('pitcher update: ', pitcher)
-        
+                    # Already a Pitcher; just update pitching stats
+                    for k in ['wins','losses','era','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']:
+                        setattr(existing_player, k, getattr(pitcher, k, getattr(existing_player, k, 0)))
+            else:
+                # No existing player, attach pitcher
+                pitcher.team = find_team
+                pitcher.teamID = find_team.teamID
+                pitcher.league = league
+                pitcher.leagueID = league.leagueID
+                try:
+                    if 'pitcher' not in pitcher.positions:
+                        pitcher.positions.append('pitcher')
+                except Exception:
+                    pass
+                # avoid duplicate by name+playerID
+                dup = False
+                for existing in find_team.players:
+                    if getattr(existing, 'playerID', None) == getattr(pitcher, 'playerID', None):
+                        dup = True
+                        break
+                    if existing.name == pitcher.name and 'pitcher' in getattr(existing, 'positions', []):
+                        dup = True
+                        break
+                if not dup:
+                    find_team.add_player(pitcher)
+        else:
+            print(f"Warning: team not found for pitcher {getattr(pitcher, 'name', '')} (teamID/team name mismatch)")
 
     # assign Main Window - league - inherited by all - with CSV load
     setattr(parent, 'league', league)
-
-    # returns empty string if no teams
-    #print(league.view_all())
+    
+    # Update league references in all child views to ensure they use the new league object
+    if parent:
+        try:
+            if hasattr(parent, 'league_view_players'):
+                parent.league_view_players.league = league
+                print("Updated league_view_players league reference")
+            if hasattr(parent, 'league_view_teams'):
+                parent.league_view_teams.league = league
+                print("Updated league_view_teams league reference")
+            if hasattr(parent, 'leaderboard'):
+                parent.leaderboard.league = league
+                print("Updated leaderboard league reference")
+            if hasattr(parent, 'refresh'):
+                parent.refresh.league = league
+                print("Updated refresh league reference")
+        except Exception as e:
+            print(f"Warning: Could not update all league references: {e}")
 
     # call refresh tree widget views after Main Window league updated
-
-            
+    try:
+        if hasattr(parent, 'refresh_view') and callable(parent.refresh_view):
+            parent.refresh_view()
+    except Exception as e:
+        print(f"Refresh note: {e}")
+        
 def load_league_gui(attr, val, league):
     setattr(league, attr, val)
 
@@ -445,27 +704,73 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
 
     if db_choice == "new database":
         print("Creating new database...")
-        # Handle DB creation logic separately if needed
-        # delete League.db 
-        # db exists 
+        # Step 2a: Close any existing connections to the database
         try: 
             conn = sqlite3.connect(db_path)
             conn.close() 
         except Exception as e: 
-            print(f"Error closing connection: {e}")
-            return 
+            print(f"Warning: Could not connect to close existing connection: {e}")
         
+        # Step 2b: Delete the existing database file to drop all data
         if os.path.exists(db_path):
             try:
                 os.remove(db_path)
                 print(f"Database file '{db_path}' deleted successfully.")
-                init_new_db(db_path, league)
             except OSError as e:
-                print(f"Error deleting database file '{db_path}': {e}") 
-        else:
-            print(f"No DB found at {db_path}!") 
+                print(f"Error: Failed to delete database file '{db_path}': {e}")
+                print("Cannot create new database without deleting the old one. Aborting.")
+                return
+        
+        # Step 2c: Clear the league object in memory to remove all existing data
+        print("Clearing league data from memory...")
+        # Clear all teams from league
+        league.head = None
+        # Reset the CLASS variable COUNT (not an instance variable)
+        LinkedList.COUNT = 0
+        # Remove any instance variable COUNT if it exists
+        if hasattr(league, 'COUNT') and 'COUNT' in league.__dict__:
+            delattr(league, 'COUNT')
+        
+        print(f"League data cleared. LinkedList.COUNT reset to: {LinkedList.COUNT}")
+        print(f"league has instance COUNT: {'COUNT' in league.__dict__}")
+        print("Only CSV data will be loaded.")
+        
+        # Clear all GUI tree widgets to remove visual display of old data
+        if parent and hasattr(parent, 'league_view_players'):
+            print("Clearing GUI tree widgets...")
+            try:
+                # Clear player views
+                if hasattr(parent.league_view_players, 'tree1_top'):
+                    parent.league_view_players.tree1_top.clear()
+                if hasattr(parent.league_view_players, 'tree2_top'):
+                    parent.league_view_players.tree2_top.clear()
+                
+                # Clear team views
+                if hasattr(parent, 'league_view_teams'):
+                    if hasattr(parent.league_view_teams, 'tree1_bottom'):
+                        parent.league_view_teams.tree1_bottom.clear()
+                    if hasattr(parent.league_view_teams, 'tree2_bottom'):
+                        parent.league_view_teams.tree2_bottom.clear()
+                
+                # Clear leaderboard
+                if hasattr(parent, 'leaderboard') and hasattr(parent.leaderboard, 'tree_widget'):
+                    parent.leaderboard.tree_widget.clear()
+                    
+                print("GUI cleared successfully.")
+            except Exception as e:
+                print(f"Warning: Could not clear all GUI elements: {e}")
+        
+        print("League data cleared. Only CSV data will be loaded.")
+        
+        # Step 2d: Create fresh database with empty tables
+        try:
+            init_new_db(db_path, league)
+            print("New database initialized with empty tables.")
+        except Exception as e:
+            print(f"Error: Failed to initialize new database: {e}")
+            return
 
-        mode = "overwrite"  # assume new DB → overwrite
+        mode = "overwrite"  # New DB is empty, so all inserts will be new
     else:
         # Step 3: Overwrite/skip/cancel choice
         overwrite_dialog = OverwriteDialog(parent=parent)
@@ -475,14 +780,23 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
             print("⏹️ CSV import cancelled by user")
             return
 
-    # Step 4: Insert CSVs
+    # Step 4: Insert CSVs (collect to local instance stack regardless of caller)
     conn = sqlite3.connect(db_path)
     summary = {}
+    local_stack = InstanceStack()
     try:
         for table, filepath in selected_files:
-            insert_csv_to_table(table, filepath, conn, mode, summary, stack, parent)
+            insert_csv_to_table(table, filepath, conn, mode, summary, local_stack, parent, league)
     finally:
         conn.close()
+
+    # Step 4b: After all tables processed, build GUI once
+    try:
+        instances = local_stack.getInstances()
+        if instances:
+            load_all_gui(instances, parent, league)
+    except Exception as e:
+        print(f"Build GUI after CSV import failed: {e}")
 
     # Step 5: Show summary
     summary_dialog = SummaryDialog(summary, parent=parent)

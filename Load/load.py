@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QMessageBox
 from League.linked_list import LinkedList 
 from League.team import Team 
 from League.player import Player, Pitcher
+from typing import Dict, Any, Optional, List
 
 
 # get csv name 
@@ -776,6 +777,197 @@ class Load():
     return isinstance(val, (type(None), int, float, str))
 
                     # -------------------------------------------------------------------------------- #
+
+def load_all_from_db(db_path: str, parent) -> Optional[LinkedList]:
+  """
+  Build a full LinkedList league from an existing SQLite DB and update the GUI.
+  - Reads league, teams, players, pitchers
+  - Reconstructs Team and Player/Pitcher objects and relationships
+  - Assigns the league to parent and refreshes views
+  """
+  def _row_factory(cursor, row):
+    return {description[0]: row[idx] for idx, description in enumerate(cursor.description)}
+
+  def _parse_json(value, default):
+    if value is None or value == "":
+      return default
+    try:
+      return json.loads(value)
+    except Exception:
+      return default
+
+  if not db_path or not os.path.exists(db_path):
+    print(f"DB not found at {db_path}")
+    return None
+
+  con = sqlite3.connect(db_path)
+  con.row_factory = _row_factory
+  cur = con.cursor()
+
+  league = LinkedList()
+
+  # Load league (first row)
+  try:
+    cur.execute("SELECT * FROM league LIMIT 1")
+    row_league = cur.fetchone()
+    if row_league:
+      # Map DB -> LinkedList admin
+      league.admin['Name'] = row_league.get('name')
+      league.admin['Commissioner'] = row_league.get('commissioner')
+      league.admin['Treasurer'] = row_league.get('treasurer')
+      league.admin['Communications'] = row_league.get('communications')
+      league.admin['Historian'] = row_league.get('historian')
+      league.admin['Recruitment'] = row_league.get('recruitment')
+      # LinkedList uses 'Start'/'Stop'
+      league.admin['Start'] = row_league.get('start')
+      league.admin['Stop'] = row_league.get('stop')
+      # Align IDs if present
+      if 'leagueID' in row_league and row_league['leagueID'] is not None:
+        try:
+          league.leagueID = int(row_league['leagueID'])
+        except Exception:
+          pass
+  except Exception as e:
+    print(f"Error loading league: {e}")
+
+  # Preload pitchers into dict by playerID
+  pitchers_by_player_id: Dict[int, Dict[str, Any]] = {}
+  try:
+    cur.execute("SELECT * FROM pitcher")
+    for prow in cur.fetchall() or []:
+      pid = prow.get('playerID')
+      if pid is not None:
+        pitchers_by_player_id[int(pid)] = prow
+  except Exception as e:
+    # Pitcher table may not exist yet; continue
+    print(f"Pitcher load note: {e}")
+
+  # Load teams first and index by teamID
+  teams_by_id: Dict[int, Team] = {}
+  try:
+    cur.execute("SELECT * FROM team")
+    for trow in cur.fetchall() or []:
+      name = trow.get('name') or 'Team'
+      manager = trow.get('manager') or 'Manager'
+      team = Team(league, name, manager)
+
+      # IDs
+      if trow.get('teamID') is not None:
+        try:
+          team.teamID = int(trow['teamID'])
+        except Exception:
+          pass
+      if trow.get('leagueID') is not None:
+        try:
+          team.leagueID = int(trow['leagueID'])
+        except Exception:
+          pass
+
+      # Simple fields
+      team.logo = trow.get('logo')
+      team.wins = int(trow.get('wins') or 0)
+      team.losses = int(trow.get('losses') or 0)
+      team.games_played = int(trow.get('games_played') or 0)
+      team.wl_avg = float(trow.get('wl_avg') or 0.0)
+      team.bat_avg = float(trow.get('bat_avg') or 0.0)
+      team.team_era = float(trow.get('team_era') or 0.0)
+      if trow.get('max_roster') is not None:
+        try:
+          team.max_roster = int(trow['max_roster'])
+        except Exception:
+          pass
+
+      # JSON fields
+      team.lineup = _parse_json(trow.get('lineup'), team.lineup)
+      team.positions = _parse_json(trow.get('positions'), team.positions)
+
+      league.add_team(team)
+      teams_by_id[team.teamID] = team
+  except Exception as e:
+    print(f"Error loading teams: {e}")
+
+  # Load players and attach to teams
+  try:
+    cur.execute("SELECT * FROM player")
+    for prow in cur.fetchall() or []:
+      team_id = prow.get('teamID')
+      if team_id is None:
+        continue
+      try:
+        team_id_int = int(team_id)
+      except Exception:
+        continue
+      team = teams_by_id.get(team_id_int)
+      if not team:
+        continue
+
+      positions_list = _parse_json(prow.get('positions'), [])
+      pid = prow.get('playerID')
+      is_pitcher_row = False
+      pitcher_row = None
+      if pid is not None:
+        try:
+          pid_int = int(pid)
+          pitcher_row = pitchers_by_player_id.get(pid_int)
+          is_pitcher_row = pitcher_row is not None or ('pitcher' in positions_list)
+        except Exception:
+          pass
+
+      if is_pitcher_row:
+        player = Pitcher(prow.get('name') or 'Player', int(prow.get('number') or 0), team, league, positions_list)
+      else:
+        player = Player(prow.get('name') or 'Player', int(prow.get('number') or 0), team, league, positions_list)
+
+      # IDs
+      if pid is not None:
+        try:
+          player.playerID = int(pid)
+        except Exception:
+          pass
+      player.teamID = team.teamID
+      player.leagueID = league.leagueID
+
+      # Offensive stats
+      for key in ['pa','at_bat','fielder_choice','hit','bb','hbp','so','hr','rbi','runs','singles','doubles','triples','sac_fly']:
+        try:
+          setattr(player, key, int(prow.get(key) or 0))
+        except Exception:
+          setattr(player, key, 0)
+      for key in ['OBP','BABIP','SLG','AVG','ISO']:
+        try:
+          setattr(player, key, float(prow.get(key) or 0.0))
+        except Exception:
+          setattr(player, key, 0.0)
+      player.image = prow.get('image')
+
+      # Pitching stats if applicable
+      if pitcher_row is not None and isinstance(player, Pitcher):
+        numeric_pitch = ['wins','losses','era','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']
+        for key in numeric_pitch:
+          val = pitcher_row.get(key)
+          try:
+            if key in ['era','WHIP','p_avg','k_9','bb_9','ip']:
+              setattr(player, key, float(val or 0.0))
+            else:
+              setattr(player, key, int(val or 0))
+          except Exception:
+            setattr(player, key, 0 if key not in ['era','WHIP','p_avg','k_9','bb_9','ip'] else 0.0)
+
+      team.add_player(player)
+  except Exception as e:
+    print(f"Error loading players: {e}")
+
+  con.close()
+
+  # Attach to GUI and refresh
+  setattr(parent, 'league', league)
+  try:
+    if hasattr(parent, 'refresh_view') and callable(parent.refresh_view):
+      parent.refresh_view()
+  except Exception as e:
+    print(f"Refresh note: {e}")
+
+  return league
 
   # deprecated
   # import csv table/field per table

@@ -63,6 +63,7 @@ class Refresh():
           item.setTextAlignment(1, Qt.AlignCenter)
           item.setTextAlignment(2, Qt.AlignCenter)
           widget.insertTopLevelItem(0, item)
+          print('refresh player:', el[0], el[1], el[2])
         elif num == 2:
           team = el[0]
           logo = self.get_logo(team)
@@ -74,6 +75,7 @@ class Refresh():
           item.setTextAlignment(1, Qt.AlignCenter)
           item.setTextAlignment(2, Qt.AlignCenter)
           widget.insertTopLevelItem(0, item)
+          print('refresh team:', el[0], el[1], el[2])
           
 
   def get_widget_view(self, tree_widget, num):

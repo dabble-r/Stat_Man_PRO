@@ -26,7 +26,6 @@ from stat_dialog.stat_dialog_ui import Ui_StatDialog
 from remove.remove import RemoveDialog
 
 from Save.save_dialog_ui import SaveDialog
-from Load.load_dialog_ui import Load 
 from Load.load_csv import load_all_csv_to_db
 from Files.file_dialog import FileDialog
 from League.stack import InstanceStack

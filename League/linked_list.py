@@ -314,18 +314,23 @@ class LinkedList():
       ###print('end of list')
   
   def find_team(self, target):
+    def _norm(s):
+      try:
+        return str(s).strip().lower()
+      except Exception:
+        return s
     traverser = self.head
     if traverser == None:
-      ###print('No teams in league\n')
       return None
-    if traverser.team.name == target:
+    target_n = _norm(target)
+    # check head
+    if _norm(traverser.team.name) == target_n:
       return traverser.team
-    else:
-      while traverser.next != None:
-        if traverser.next.team.name == target:
-          return traverser.next.team
-        traverser = traverser.next 
-    ###print('Team not found')
+    # traverse rest
+    while traverser.next != None:
+      if _norm(traverser.next.team.name) == target_n:
+        return traverser.next.team
+      traverser = traverser.next 
     return None
   
   def find_teamID(self, target):
@@ -338,7 +343,7 @@ class LinkedList():
     else:
       while traverser.next != None:
         if traverser.next.team.teamID == target:
-          return traverser.next.teamID
+          return traverser.next.team
         traverser = traverser.next 
     ###print('Team not found')
     return None
@@ -400,7 +405,8 @@ class LinkedList():
       while traverser != None:
         players = traverser.team.players
         for el in players:
-          temp = (el.name, el.team, str(el.number))
+          team_val = el.team.name if hasattr(el.team, 'name') else el.team
+          temp = (el.name, team_val, str(el.number))
           ret.append(temp)
           temp = None
         traverser = traverser.next

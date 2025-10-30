@@ -56,20 +56,23 @@ class InstanceStack():
         self.instances = []
         self.rows = []
         self.values = []
+        self.tables = []
         self.table_check = ["leagueID", "teamID", "playerID", "pitcherID"]
         
-    
-    def addRow(self, row):
-        self.rows.append(row)
-    
-    def addValue(self, value):
-        self.values.append(value) 
+  
+    def add(self, table_name, row, values):
+      self.tables.append(table_name)
+      self.rows.append(row)
+      self.values.append(values) 
 
     def popRow(self):
         self.rows.pop()
     
     def popValue(self):
         self.values.pop()
+  
+    def popTable(self):
+      self.tables.pop()
 
     def peek(self):
         return self.instances[0]
@@ -89,40 +92,31 @@ class InstanceStack():
         return top
     
     def getTable(self):
-        while len(self.rows) != 0:
-          top = self.topRow()
-          table_hint = list(top.keys())[0] 
-          if table_hint in self.table_check:
-            return table_hint
-        return None
+      if len(self.tables) == 0:
+          return None
+      return self.tables[-1]
     
     def getType(self):
-        table_hint = self.getTable()
-        value_hint = self.topValue()
-        zipped = list(zip(self.topRow(), value_hint))
-        temp = {}
-        match table_hint:
-            case "leagueID":
-                temp['league'] = zipped
-                self.instances.insert(0, temp)
-                temp = {}
-                
-            case "teamID":
-                temp["team"] = zipped
-                self.instances.insert(1, temp)
-                temp = {}
-                
-            case "playerID":
-                temp["player"] = zipped
-                self.instances.append(temp)
-                temp = {}
-                
-            case "pitcherID":
-                temp["pitcher"] = zipped
-                self.instances.append(temp)
-                temp = {}
-        self.popRow()
-        self.popValue()
+      table_name = self.getTable()
+      value_hint = self.topValue()
+      # zip keys in insertion order with aligned values list
+      zipped = list(zip(self.topRow().keys(), value_hint))
+      temp = {}
+      if table_name == "league":
+          temp['league'] = zipped
+          self.instances.insert(0, temp)
+      elif table_name == "team":
+          temp['team'] = zipped
+          self.instances.insert(1, temp)
+      elif table_name == "player":
+          temp['player'] = zipped
+          self.instances.append(temp)
+      elif table_name == "pitcher":
+          temp['pitcher'] = zipped
+          self.instances.append(temp)
+      self.popRow()
+      self.popValue()
+      self.popTable()
 
     def getLeague(self):
         pass 
@@ -137,7 +131,14 @@ class InstanceStack():
         pass
     
     def getInstances(self):
-        self.getType()
+        # process all queued rows into instances, stop if indeterminate
+        guard = 0
+        while len(self.rows) > 0 and len(self.values) > 0 and guard < 10000:
+            hint = self.getTable()
+            if hint is None:
+                break
+            self.getType()
+            guard += 1
         return self.instances
         
         

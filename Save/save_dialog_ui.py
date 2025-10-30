@@ -80,10 +80,17 @@ class SaveDialog(QDialog):
         self.message = message
         self.file_dir = file_dir
         self.rand = random.randint(1, 1000)
-        self.db = (
-            f"{self.file_dir}/DB/{self.league.name}.db"
-            if self.league.name else f'{self.file_dir}/DB/db_{self.rand}.db'
-        )
+        
+        # Use admin['Name'] if available, otherwise league.name, otherwise generate random name
+        league_name = None
+        if hasattr(self.league, 'admin') and self.league.admin.get('Name'):
+            league_name = self.league.admin['Name']
+        elif hasattr(self.league, 'name') and self.league.name and self.league.name != 'League':
+            league_name = self.league.name
+        
+        # Construct database path - always use League.db as the filename for consistency
+        self.db = f"{self.file_dir}/DB/League.db"
+        print(f"SaveDialog - Database path set to: {self.db}")
         self.selection = None  # "database", "csv", "database,csv", "cancel"
 
         self.setWindowTitle("Save Progress")
