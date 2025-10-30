@@ -1,0 +1,56 @@
+To Do 
+
+1 - refactor file path to cwd - Images folder ( fixed path) -- DONE
+2 - remove 'install wizard' -- DONE
+3 - limit themes (2 versions of monochrome) -- DONE
+4 - fix graph percentages ( player donut ) -- DONE
+5 - fix team bar graph decimal values -- DONE
+5 - remove all print statements --
+6 - create read me with clear formatting --
+7 - improve documentation throughout program --
+8 - sqlie3 DB takes images as file path strings to fixed file path - Images folder in cwd -- DONE
+
+9 - timestamp for league, team, player instances, and csv files - appended to file name - DONE
+7 - refactor csv saving 
+  *** mkdir for csv table files - folder name is timestamp
+    *** if folder, base name, exists 
+      *** prompt user to upsert table data or create new csv folder
+  *** save each table as separate csv 
+  *** retrieve csv files of same save session from Save/CSV folder 
+  *** iterate over files in directory, load each as csv file reader, create instance in league and display
+  *** prompt user to save on close 
+
+
+Load CSV to league 
+    * load button 
+    * open load dialog 
+    * select folder, not file 
+    * prompt user to init new db or merge leagues
+    * function iterates over csv files in folder, exclude sql sequence file 
+    * depending on user input to prompt:
+      * insert new data to empty league 
+      * merge data to existing league
+    
+    * Update to GUI 
+    * create class of Stack 
+    * identify type of instance 
+    * organize within class structure 
+    * add to league 
+      * create league 
+      * create team 
+        * add team to league
+      * create player/pitcher 
+        * add to team
+
+
+Save CSV logic:
+*** prevent multiple league isntance in League.db
+  1 - user clicks on save button
+  2 - save dialog shows 
+  3 - save dialog - sets Saved/CSV dir path
+  4 - user enters csv folder name (must enter folder name)
+  5 - if no league DB exsits, init DB and populate DB
+  5 - if CSV folder exists in Saved/CSV directory, prompt user to overwrite or create new folder
+  6 - if user creates new folder, add timestamp to folder name
+  7 - if user overwrites CSV folder, delete all CSV files in folder, save current CSV files from DB 
+ 

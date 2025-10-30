@@ -1,0 +1,2 @@
+playerID,name,leagueID,teamID,number,team,positions,pa,at_bat,fielder_choice,hit,bb,hbp,so,hr,rbi,runs,singles,doubles,triples,sac_fly,OBP,BABIP,SLG,AVG,ISO,image
+4859,test Player,1325,795,13,test,"[""pitcher"", ""center field""]",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0,0.0,0.0,0.0,/home/njbro/stat_man_g/Saved/Images/a-swingin-affair.jpg

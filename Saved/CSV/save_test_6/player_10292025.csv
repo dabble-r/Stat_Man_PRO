@@ -1,0 +1,2 @@
+playerID,name,leagueID,teamID,number,team,positions,pa,at_bat,fielder_choice,hit,bb,hbp,so,hr,rbi,runs,singles,doubles,triples,sac_fly,OBP,BABIP,SLG,AVG,ISO,image
+795,test,1325,795,12,test,"[""catcher"", ""first base""]",16,12,0,10,4,0,2,0,0,0,0,0,0,0,0.875,1.0,0.0,0.833,0.0,

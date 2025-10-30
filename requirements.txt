@@ -1,0 +1,5 @@
+# UI Framework
+PySide6>=6.5.0
+
+# Add other dependencies as needed
+
