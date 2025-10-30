@@ -361,14 +361,25 @@ class Save():
 
       # fetch all league instances IDs
       res = cur.execute(f"SELECT leagueID FROM league")
-      ret = [row[0] for row in res.fetchall()] # ret of league IDs
-      print(ret)
+      raw_ids = [row[0] for row in res.fetchall()] # ret of league IDs
+      # Normalize both DB and in-memory IDs to ints when possible
+      norm_ids = set()
+      for x in raw_ids:
+        try:
+          norm_ids.add(int(x))
+        except Exception:
+          norm_ids.add(x)
+      try:
+        leagueID_norm = int(leagueID)
+      except Exception:
+        leagueID_norm = leagueID
+      print(list(norm_ids))
 
       cols = []
       vals = []
 
       # if current league exists in DB
-      if leagueID in ret:
+      if leagueID_norm in norm_ids:
         print(f"League {self.league.admin['Name']} (ID: {leagueID}) already exists in DB. Updating...")
         
         # Just update the existing league data (normal save behavior)
@@ -376,7 +387,7 @@ class Save():
         print("League data updated successfully.")
         return False
         
-      elif leagueID not in ret:
+      elif leagueID_norm not in norm_ids:
         # League doesn't exist in DB, insert it
         print(f"League {self.league.admin['Name']} (ID: {leagueID}) not found in DB. Inserting...")
 
@@ -410,8 +421,9 @@ class Save():
         print(f"Values: {vals}")
         
         try: 
+          # Use upsert semantics to avoid UNIQUE conflicts on leagueID
           cur.execute(
-                      f"INSERT INTO league ({column_str}) VALUES ({placeholders})",
+                      f"INSERT OR REPLACE INTO league ({column_str}) VALUES ({placeholders})",
                       tuple(vals)
                     )
                   
@@ -668,7 +680,13 @@ class Save():
         players = team.players
 
         res = cur.execute("SELECT playerID FROM player")
-        ret = [row[0] for row in res.fetchall()]
+        raw_player_ids = [row[0] for row in res.fetchall()]
+        norm_player_ids = set()
+        for pid in raw_player_ids:
+          try:
+            norm_player_ids.add(int(pid))
+          except Exception:
+            norm_player_ids.add(pid)
           
         for player in players: 
           player_name = player.name 
@@ -677,7 +695,11 @@ class Save():
           checkPitcher = isPitcher(player)
           
           # does player exist in DB ???
-          if player_ID in ret:
+          try:
+            player_ID_norm = int(player_ID)
+          except Exception:
+            player_ID_norm = player_ID
+          if player_ID_norm in norm_player_ids:
             print('player in DB: ', player_ID, ret)
 
             # is the player a pitcher?
@@ -694,7 +716,7 @@ class Save():
               #continue
 
           # if playerID not in DB, create new player
-          elif player_ID not in ret:
+          elif player_ID_norm not in norm_player_ids:
             #print('no match player, wish to create?')
 
             cols = []
@@ -731,7 +753,7 @@ class Save():
               ##print(vals)
               
               cur.execute(
-                    f"INSERT INTO pitcher ({column_str}) VALUES ({placeholders})",
+                    f"INSERT OR REPLACE INTO pitcher ({column_str}) VALUES ({placeholders})",
                     tuple(vals)
                 )
             
@@ -771,7 +793,7 @@ class Save():
           #print(vals) 
         
           cur.execute(
-                f"INSERT INTO player ({column_str}) VALUES ({placeholders})",
+                f"INSERT OR REPLACE INTO player ({column_str}) VALUES ({placeholders})",
                 tuple(vals)
             )
         
@@ -1056,8 +1078,17 @@ class Save():
         cur.execute("SELECT leagueID FROM league")
         existing_leagues = cur.fetchall()
         if existing_leagues:
-          existing_id = existing_leagues[0][0]
-          current_id = self.league.leagueID
+          existing_id_raw = existing_leagues[0][0]
+          current_id_raw = self.league.leagueID
+          # Normalize to ints when possible to avoid false mismatches due to type/format
+          try:
+            existing_id = int(existing_id_raw)
+          except Exception:
+            existing_id = existing_id_raw
+          try:
+            current_id = int(current_id_raw)
+          except Exception:
+            current_id = current_id_raw
           print(f"save master - DB has league {existing_id}, memory has league {current_id}")
           
           # If different league IDs, we need to clear and rebuild

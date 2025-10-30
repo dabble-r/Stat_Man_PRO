@@ -204,6 +204,9 @@ class LeagueViewPlayers(QWidget):
         self.load_widget.exec()'''
         file = FileDialog(self.message, parent=self.parent, flag="load")
         csv_path = file.open_file_dialog()
+        if not csv_path:
+            print('No folder selected.')
+            return
 
         # deprecated
         # load = Load(self.league, self.message, self.file_dir, csv_path=csv_path, parent=self)

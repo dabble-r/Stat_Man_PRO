@@ -26,6 +26,39 @@ PRIMARY_KEYS = {
 
 ALLOWED_TABLES = {"league", "team", "player", "pitcher"}
 
+# Non-derived numeric fields to add during merge; derived will be recalculated
+PLAYER_NUMERIC_ADD = {"pa","at_bat","fielder_choice","hit","bb","hbp","put_out","so","hr","rbi","runs","singles","doubles","triples","sac_fly"}
+PLAYER_DERIVED = {"OBP","BABIP","SLG","AVG","ISO"}
+
+PITCHER_NUMERIC_ADD = {"wins","losses","games_played","games_started","games_completed","shutouts","saves","save_ops","ip","p_at_bats","p_hits","p_runs","er","p_hr","p_hb","p_bb","p_so"}
+PITCHER_DERIVED = {"WHIP","p_avg","k_9","bb_9","era"}
+
+def _to_int(val):
+    try:
+        if val is None or val == "":
+            return 0
+        if isinstance(val, (int,)):
+            return val
+        if isinstance(val, float):
+            return int(val)
+        s = str(val).strip().strip('"').strip("'")
+        if s == "":
+            return 0
+        if "." in s:
+            f = float(s)
+            return int(f)
+        return int(s)
+    except Exception:
+        return 0
+
+def _normalize_numeric_attrs(obj, fields):
+    try:
+        for f in fields:
+            if hasattr(obj, f):
+                setattr(obj, f, _to_int(getattr(obj, f)))
+    except Exception:
+        pass
+
 
 # ----------------------- Path Migration -----------------------
 def migrate_image_path(old_path):
@@ -203,6 +236,53 @@ class OverwriteDialog(QDialog):
         self.accept()
 
 
+class ReplaceMergeDialog(QDialog):
+    """Dialog to choose Replace (drop and reload) or Merge (upsert/additive)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Import Strategy")
+        self.choice = "cancel"
+        self.setMinimumWidth(400)
+        self.setSizeGripEnabled(True)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        layout.addWidget(QLabel(
+            "You selected to update the existing database.\n\n"
+            "Choose how to apply CSV data:\n"
+            "- Replace: Drop all DB data, then load CSVs (fresh).\n"
+            "- Merge: Keep DB data, add new rows, and add numeric stats to existing rows."
+        ))
+
+        button_layout = QHBoxLayout()
+        replace_btn = QPushButton("Replace")
+        merge_btn = QPushButton("Merge")
+        cancel_btn = QPushButton("Cancel")
+
+        replace_btn.setMinimumHeight(40)
+        merge_btn.setMinimumHeight(40)
+        cancel_btn.setMinimumHeight(40)
+
+        replace_btn.clicked.connect(self.choose_replace)
+        merge_btn.clicked.connect(self.choose_merge)
+        cancel_btn.clicked.connect(self.reject)
+
+        button_layout.addWidget(replace_btn)
+        button_layout.addWidget(merge_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+
+    def choose_replace(self):
+        self.choice = "replace"
+        self.accept()
+
+    def choose_merge(self):
+        self.choice = "merge"
+        self.accept()
+
 class SummaryDialog(QDialog):
     """Dialog to show CSV import summary."""
 
@@ -273,7 +353,12 @@ def group_csv_by_session(csv_files: list) -> dict:
 
 
 def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack: InstanceStack, parent, league: LinkedList):
-    """Insert CSV into SQLite table according to overwrite/skip mode."""
+    """Insert CSV into SQLite table according to mode: overwrite/skip/merge.
+
+    - overwrite: INSERT OR REPLACE entire rows
+    - skip: INSERT only if not exists
+    - merge: if row exists, add numeric fields and replace non-numeric; else INSERT
+    """
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table})")
     table_columns = [info[1] for info in cursor.fetchall()]
@@ -335,6 +420,61 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
                 ordered = {col: row.get(col, None) for col in valid_columns}
                 stack.add(table, ordered, values)
 
+            elif mode == "merge":
+                existed = False
+                row_dict = {col: row.get(col, None) for col in valid_columns}
+                if primary_key and primary_key in valid_columns:
+                    pk_value = row.get(primary_key)
+                    cursor.execute(f"SELECT {', '.join(valid_columns)} FROM {table} WHERE {primary_key} = ?", (pk_value,))
+                    existing_row = cursor.fetchone()
+                    if existing_row is not None:
+                        existed = True
+                        existing_map = {col: existing_row[idx] for idx, col in enumerate(valid_columns)}
+                        # Merge: numeric add, non-numeric replace
+                        merged = {}
+                        for col in valid_columns:
+                            new_val = row_dict.get(col)
+                            old_val = existing_map.get(col)
+                            if col == primary_key:
+                                merged[col] = old_val if old_val is not None else new_val
+                                continue
+                            # Table-specific rules
+                            if table == "player":
+                                if col in PLAYER_DERIVED:
+                                    merged[col] = old_val  # skip; will recalc later
+                                elif col in PLAYER_NUMERIC_ADD:
+                                    merged[col] = _to_int(old_val) + _to_int(new_val)
+                                else:
+                                    merged[col] = new_val if new_val not in ('__SQL_NULL__',) else old_val
+                            elif table == "pitcher":
+                                if col in PITCHER_DERIVED:
+                                    merged[col] = old_val
+                                elif col in PITCHER_NUMERIC_ADD:
+                                    merged[col] = _to_int(old_val) + _to_int(new_val)
+                                else:
+                                    merged[col] = new_val if new_val not in ('__SQL_NULL__',) else old_val
+                            else:
+                                # default behavior: replace
+                                merged[col] = new_val if new_val not in ('__SQL_NULL__',) else old_val
+                        # Build UPDATE statement
+                        update_cols = [c for c in valid_columns if c != primary_key]
+                        update_clause = ", ".join([f"{c} = ?" for c in update_cols])
+                        update_vals = [merged[c] for c in update_cols] + [merged[primary_key]]
+                        cursor.execute(f"UPDATE {table} SET {update_clause} WHERE {primary_key} = ?", update_vals)
+                        overwritten += 1
+                    else:
+                        # Row not exists -> INSERT
+                        cursor.execute(f"INSERT INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
+                        inserted += 1
+                else:
+                    # No primary key definition -> fall back to insert
+                    cursor.execute(f"INSERT INTO {table} ({', '.join(valid_columns)}) VALUES ({placeholders})", values)
+                    inserted += 1
+
+                # collect ordered row for GUI building
+                ordered = {col: row.get(col, None) for col in valid_columns}
+                stack.add(table, ordered, values)
+
     conn.commit()
     summary[table] = {"inserted": inserted, "skipped": skipped, "overwritten": overwritten, "error": False}
     
@@ -342,7 +482,7 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
     # Defer building GUI until all tables are processed. Instances
     # will be collected across calls via the shared InstanceStack.
 
-def load_all_gui(instances, parent, league):
+def load_all_gui(instances, parent, league, mode=None):
     # Process in deterministic order: league -> team -> player -> pitcher
     league_items = []
     team_items = []
@@ -418,7 +558,46 @@ def load_all_gui(instances, parent, league):
                 if val in (0, '0', 0.0, '0.0'):
                     continue
                 load_team_gui(attr, val, team)
-        league.add_team(team)
+        # Merge with existing team if present; otherwise add as new
+        try:
+            existing_team = None
+            # Prefer match by teamID if set
+            if hasattr(team, 'teamID') and getattr(team, 'teamID', None) not in (None, ''):
+                try:
+                    existing_team = league.find_teamID(team.teamID)
+                except Exception:
+                    existing_team = None
+            # Fallback to name-based match
+            if existing_team is None and hasattr(team, 'name') and team.name:
+                try:
+                    existing_team = league.find_team(team.name)
+                except Exception:
+                    existing_team = None
+
+            if existing_team is not None:
+                # Update attributes on existing team
+                for el in vals:
+                    attr_u = el[0]
+                    val_u = el[1]
+                    if attr_u in ('players',):
+                        continue
+                    if attr_u in ('lineup', 'positions'):
+                        try:
+                            parsed_u = json.loads(val_u) if isinstance(val_u, str) else val_u
+                        except Exception:
+                            parsed_u = val_u
+                        setattr(existing_team, attr_u, parsed_u)
+                    elif attr_u == 'logo':
+                        migrated_path_u = migrate_image_path(val_u)
+                        setattr(existing_team, attr_u, migrated_path_u if migrated_path_u else None)
+                    else:
+                        if val_u in (0, '0', 0.0, '0.0'):
+                            continue
+                        setattr(existing_team, attr_u, val_u)
+            else:
+                league.add_team(team)
+        except Exception as e:
+            print(f"Team merge/add error: {e}")
     print('league after load', league)
     print('league after load', league.view_all())
     print(f'LinkedList.COUNT (class var): {LinkedList.COUNT}')
@@ -594,6 +773,66 @@ def load_all_gui(instances, parent, league):
                     break
             if not exists:
                 find_team.add_player(player)
+            else:
+                # Merge behavior using model setters to honor stat logic
+                if mode == 'merge':
+                    # Ensure message pipe exists for validations/warnings
+                    try:
+                        if getattr(existing, 'message', None) is None:
+                            if hasattr(parent, 'message') and getattr(parent, 'message', None) is not None:
+                                existing.message = parent.message
+                            else:
+                                class _Msg:
+                                    def show_message(self, m):
+                                        print(f"[MESSAGE] {m}")
+                                existing.message = _Msg()
+                    except Exception:
+                        pass
+                    # Normalize existing numeric fields to integers to avoid str concatenation
+                    _normalize_numeric_attrs(existing, [
+                        'pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly'
+                    ])
+                    # Apply in logical, conflict-free order
+                    ordered_sets = [
+                        # 1) Hits headline first
+                        ('hit', 'set_hit'),
+                        # 2) Components bounded by hits
+                        ('singles', 'set_singles'), ('doubles', 'set_doubles'), ('triples', 'set_triples'), ('hr', 'set_hr'),
+                        # 3) PA non-AB events
+                        ('bb', 'set_bb'), ('hbp', 'set_hbp'), ('fielder_choice', 'set_fielder_choice'),
+                        # 4) Outs affecting AB/PA
+                        ('so', 'set_so'), ('sac_fly', 'set_sac_fly'),
+                        # 5) Cosmetic/counters
+                        ('rbi', 'set_rbi'), ('runs', 'set_runs')
+                    ]
+                    for attr_name, setter_name in ordered_sets:
+                        try:
+                            delta = _to_int(getattr(player, attr_name, 0))
+                            if delta:
+                                setter = getattr(existing, setter_name, None)
+                                if callable(setter):
+                                    setter(delta)
+                                else:
+                                    setattr(existing, attr_name, _to_int(getattr(existing, attr_name, 0)) + delta)
+                        except Exception as e:
+                            try:
+                                print(f"[MERGE][PLAYER] Failed {attr_name}: delta={delta} name={getattr(existing,'name',None)} id={getattr(existing,'playerID',None)} team={getattr(find_team,'name',None)} pa={getattr(existing,'pa',None)} ab={getattr(existing,'at_bat',None)} hit={getattr(existing,'hit',None)} error={e}")
+                            except Exception:
+                                pass
+                            try:
+                                if hasattr(parent, 'message') and getattr(parent, 'message', None) is not None:
+                                    parent.message.show_message(f"Merge warning for {getattr(existing,'name','player')}: could not merge {attr_name}.")
+                            except Exception:
+                                pass
+                    # Recalculate derived offense metrics
+                    try:
+                        if hasattr(existing, 'set_AVG'): existing.set_AVG()
+                        if hasattr(existing, 'set_SLG'): existing.set_SLG()
+                        if hasattr(existing, 'set_BABIP'): existing.set_BABIP()
+                        if hasattr(existing, 'set_OBP'): existing.set_OBP()
+                        if hasattr(existing, 'set_ISO'): existing.set_ISO()
+                    except Exception:
+                        pass
         else:
             print(f"Warning: team not found for player {getattr(player, 'name', '')} (teamID/team name mismatch)")
 
@@ -671,20 +910,133 @@ def load_all_gui(instances, parent, league):
                     # copy offensive stats
                     for k in ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly','OBP','BABIP','SLG','AVG','ISO','image','playerID','leagueID','teamID']:
                         setattr(new_pitcher, k, getattr(existing_player, k, getattr(new_pitcher, k, 0)))
-                    # merge pitcher stats from current pitcher instance
-                    for k in ['wins','losses','era','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']:
-                        setattr(new_pitcher, k, getattr(pitcher, k, getattr(new_pitcher, k, 0)))
+                    # merge/replace pitcher stats using setters
+                    if mode == 'merge':
+                        # Ensure message pipe exists
+                        try:
+                            if getattr(new_pitcher, 'message', None) is None:
+                                if hasattr(parent, 'message') and getattr(parent, 'message', None) is not None:
+                                    new_pitcher.message = parent.message
+                                else:
+                                    class _Msg:
+                                        def show_message(self, m):
+                                            print(f"[MESSAGE] {m}")
+                                    new_pitcher.message = _Msg()
+                        except Exception:
+                            pass
+                        # Normalize numeric fields on new_pitcher before merge
+                        _normalize_numeric_attrs(new_pitcher, [
+                            'wins','losses','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so'
+                        ])
+                        # Apply in logical order to avoid cap conflicts
+                        pitcher_setters = [
+                            # 1) Game frame
+                            ('games_played','set_games_played'), ('wins','set_wins'), ('losses','set_losses'),
+                            ('games_started','set_games_started'), ('games_completed','set_games_completed'),
+                            ('shutouts','set_shutouts'), ('saves','set_saves'), ('save_ops','set_save_ops'),
+                            # 2) Batter-facing totals first
+                            ('p_at_bats','set_p_at_bats'),
+                            # 3) Components bounded by p_at_bats
+                            ('p_hits','set_p_hits'), ('p_bb','set_p_bb'), ('p_so','set_p_so'), ('p_hr','set_p_hr'), ('p_hb','set_p_hb'), ('p_runs','set_p_runs'), ('er','set_er'),
+                            # 4) Innings last
+                            ('ip','set_ip')
+                        ]
+                        for attr_name, setter_name in pitcher_setters:
+                            try:
+                                delta = _to_int(getattr(pitcher, attr_name, 0))
+                                if delta:
+                                    setter = getattr(new_pitcher, setter_name, None)
+                                    if callable(setter):
+                                        setter(delta)
+                                    else:
+                                        setattr(new_pitcher, attr_name, _to_int(getattr(new_pitcher, attr_name, 0)) + delta)
+                            except Exception as e:
+                                try:
+                                    print(f"[MERGE][PITCHER->NEW] Failed {attr_name}: delta={delta} name={getattr(new_pitcher,'name',None)} id={getattr(new_pitcher,'playerID',None)} team={getattr(find_team,'name',None)} ip={getattr(new_pitcher,'ip',None)} p_ab={getattr(new_pitcher,'p_at_bats',None)} error={e}")
+                                except Exception:
+                                    pass
+                                try:
+                                    if hasattr(parent, 'message') and getattr(parent, 'message', None) is not None:
+                                        parent.message.show_message(f"Merge warning for {getattr(new_pitcher,'name','pitcher')}: could not merge {attr_name}.")
+                                except Exception:
+                                    pass
+                    else:
+                        for k in ['wins','losses','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']:
+                            setattr(new_pitcher, k, getattr(pitcher, k, getattr(new_pitcher, k, 0)))
                     # ensure positions includes pitcher
                     try:
                         if 'pitcher' not in new_pitcher.positions:
                             new_pitcher.positions.append('pitcher')
                     except Exception:
                         pass
+                    # recalc derived pitching
+                    try:
+                        if hasattr(new_pitcher, 'set_era'): new_pitcher.set_era()
+                        if hasattr(new_pitcher, 'set_WHIP'): new_pitcher.set_WHIP()
+                        if hasattr(new_pitcher, 'set_p_avg'): new_pitcher.set_p_avg()
+                        if hasattr(new_pitcher, 'set_k_9'): new_pitcher.set_k_9()
+                        if hasattr(new_pitcher, 'set_bb_9'): new_pitcher.set_bb_9()
+                    except Exception:
+                        pass
                     find_team.players[existing_index] = new_pitcher
                 else:
-                    # Already a Pitcher; just update pitching stats
-                    for k in ['wins','losses','era','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']:
-                        setattr(existing_player, k, getattr(pitcher, k, getattr(existing_player, k, 0)))
+                    # Already a Pitcher; merge or replace pitching stats via setters
+                    if mode == 'merge':
+                        # Ensure message pipe exists
+                        try:
+                            if getattr(existing_player, 'message', None) is None:
+                                if hasattr(parent, 'message') and getattr(parent, 'message', None) is not None:
+                                    existing_player.message = parent.message
+                                else:
+                                    class _Msg:
+                                        def show_message(self, m):
+                                            print(f"[MESSAGE] {m}")
+                                    existing_player.message = _Msg()
+                        except Exception:
+                            pass
+                        # Normalize existing pitcher's numeric fields to integers
+                        _normalize_numeric_attrs(existing_player, [
+                            'wins','losses','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so'
+                        ])
+                        pitcher_setters = [
+                            ('games_played','set_games_played'), ('wins','set_wins'), ('losses','set_losses'),
+                            ('games_started','set_games_started'), ('games_completed','set_games_completed'),
+                            ('shutouts','set_shutouts'), ('saves','set_saves'), ('save_ops','set_save_ops'),
+                            ('p_at_bats','set_p_at_bats'),
+                            ('p_hits','set_p_hits'), ('p_bb','set_p_bb'), ('p_so','set_p_so'), ('p_hr','set_p_hr'), ('p_hb','set_p_hb'), ('p_runs','set_p_runs'), ('er','set_er'),
+                            ('ip','set_ip')
+                        ]
+                        for attr_name, setter_name in pitcher_setters:
+                            try:
+                                delta = _to_int(getattr(pitcher, attr_name, 0))
+                                if delta:
+                                    setter = getattr(existing_player, setter_name, None)
+                                    if callable(setter):
+                                        setter(delta)
+                                    else:
+                                        setattr(existing_player, attr_name, _to_int(getattr(existing_player, attr_name, 0)) + delta)
+                            except Exception as e:
+                                try:
+                                    print(f"[MERGE][PITCHER] Failed {attr_name}: delta={delta} name={getattr(existing_player,'name',None)} id={getattr(existing_player,'playerID',None)} team={getattr(find_team,'name',None)} ip={getattr(existing_player,'ip',None)} p_ab={getattr(existing_player,'p_at_bats',None)} error={e}")
+                                except Exception:
+                                    pass
+                                try:
+                                    if hasattr(parent, 'message') and getattr(parent, 'message', None) is not None:
+                                        parent.message.show_message(f"Merge warning for {getattr(existing_player,'name','pitcher')}: could not merge {attr_name}.")
+                                except Exception:
+                                    pass
+                    else:
+                        for k in ['wins','losses','games_played','games_started','games_completed','shutouts','saves','save_ops','ip','p_at_bats','p_hits','p_runs','er','p_hr','p_hb','p_bb','p_so','WHIP','p_avg','k_9','bb_9']:
+                            setattr(existing_player, k, getattr(pitcher, k, getattr(existing_player, k, 0)))
+                    # recalc derived pitching
+                    try:
+                        if hasattr(existing_player, 'set_era'): existing_player.set_era()
+                        if hasattr(existing_player, 'set_WHIP'): existing_player.set_WHIP()
+                        if hasattr(existing_player, 'set_p_avg'): existing_player.set_p_avg()
+                        if hasattr(existing_player, 'set_k_9'): existing_player.set_k_9()
+                        if hasattr(existing_player, 'set_bb_9'): existing_player.set_bb_9()
+                    except Exception:
+                        pass
             else:
                 # No existing player, attach pitcher
                 pitcher.team = find_team
@@ -731,6 +1083,18 @@ def load_all_gui(instances, parent, league):
         except Exception as e:
             print(f"Warning: Could not update all league references: {e}")
 
+    # Recompute team-level derived stats after merges
+    try:
+        for t in league.get_all_objs():
+            if hasattr(t, 'set_wl_avg'):
+                t.set_wl_avg()
+            if hasattr(t, 'set_bat_avg'):
+                t.set_bat_avg()
+            if hasattr(t, 'set_team_era'):
+                t.set_team_era()
+    except Exception as e:
+        print(f"Warning recomputing team derived stats: {e}")
+
     # call refresh tree widget views after Main Window league updated
     try:
         if hasattr(parent, 'refresh_view') and callable(parent.refresh_view):
@@ -750,27 +1114,62 @@ def load_player_gui(attr, val, player):
 def load_pitcher_gui(attr, val, pitcher):
     setattr(pitcher, attr, val)
 
+# ----------------------- Persistence Helpers -----------------------
+def persist_derived_stats_to_db(db_path: str, league: LinkedList):
+    """Write recalculated derived stats back to the database for consistency."""
+    try:
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+
+        for team in league.get_all_objs():
+            try:
+                roster = getattr(team, 'players', [])
+            except Exception:
+                roster = []
+            for p in roster:
+                pid = getattr(p, 'playerID', None)
+                if pid is None:
+                    continue
+                # Update player derived offense
+                try:
+                    obp = float(getattr(p, 'OBP', 0) or 0)
+                    babip = float(getattr(p, 'BABIP', 0) or 0)
+                    slg = float(getattr(p, 'SLG', 0) or 0)
+                    avg = float(getattr(p, 'AVG', 0) or 0)
+                    iso = float(getattr(p, 'ISO', 0) or 0)
+                    cur.execute(
+                        "UPDATE player SET OBP=?, BABIP=?, SLG=?, AVG=?, ISO=? WHERE playerID=?",
+                        (obp, babip, slg, avg, iso, pid)
+                    )
+                except Exception as e:
+                    print(f"Persist player derived failed (playerID={pid}): {e}")
+
+                # Update pitcher derived if pitcher row exists
+                try:
+                    era = float(getattr(p, 'era', 0) or 0)
+                    whip = float(getattr(p, 'WHIP', 0) or 0)
+                    p_avg = float(getattr(p, 'p_avg', 0) or 0)
+                    k_9 = float(getattr(p, 'k_9', 0) or 0)
+                    bb_9 = float(getattr(p, 'bb_9', 0) or 0)
+                    cur.execute(
+                        "UPDATE pitcher SET era=?, WHIP=?, p_avg=?, k_9=?, bb_9=? WHERE playerID=?",
+                        (era, whip, p_avg, k_9, bb_9, pid)
+                    )
+                except Exception as e:
+                    print(f"Persist pitcher derived failed (playerID={pid}): {e}")
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Persist derived stats DB error: {e}")
+
 # ----------------------- Full CSV Loader -----------------------
 def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None):
     """
     Full workflow: session selection + database choice + overwrite choice + import + summary.
     """
     
-    # Check if league already has data (teams/players in memory)
-    if LinkedList.COUNT > 0:
-        from PySide6.QtWidgets import QMessageBox
-        reply = QMessageBox.question(
-            parent,
-            "League Data Exists",
-            f"The league already has {LinkedList.COUNT} team(s) loaded.\n\n"
-            "Loading new data will replace all current data in memory.\n\n"
-            "Do you want to continue?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.No:
-            print("Load cancelled - user chose to keep existing league data")
-            return
+    # Removed extra prompt; behavior is decided by database choice dialog
     
     csv_files = get_csv_files(directory)
     sessions = group_csv_by_session(csv_files)
@@ -870,13 +1269,55 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
 
         mode = "overwrite"  # New DB is empty, so all inserts will be new
     else:
-        # Step 3: Overwrite/skip/cancel choice
-        overwrite_dialog = OverwriteDialog(parent=parent)
-        overwrite_dialog.exec()
-        mode = overwrite_dialog.choice
-        if mode == "cancel":
+        # Step 3: Replace (drop and reload) or Merge (additive updates)
+        strategy_dialog = ReplaceMergeDialog(parent=parent)
+        strategy_dialog.exec()
+        strategy = strategy_dialog.choice
+        if strategy == "cancel":
             print("⏹️ CSV import cancelled by user")
             return
+        if strategy == "replace":
+            # Remove DB file to drop all tables/data
+            try:
+                if os.path.exists(db_path):
+                    try:
+                        ctmp = sqlite3.connect(db_path)
+                        ctmp.close()
+                    except Exception:
+                        pass
+                    os.remove(db_path)
+            except Exception as e:
+                print(f"Error removing DB file on replace: {e}")
+                return
+            # Clear in-memory league and GUI
+            try:
+                league.head = None
+                LinkedList.COUNT = 0
+                if hasattr(league, 'COUNT') and 'COUNT' in league.__dict__:
+                    delattr(league, 'COUNT')
+                if parent and hasattr(parent, 'league_view_players'):
+                    if hasattr(parent.league_view_players, 'tree1_top'):
+                        parent.league_view_players.tree1_top.clear()
+                    if hasattr(parent.league_view_players, 'tree2_top'):
+                        parent.league_view_players.tree2_top.clear()
+                if parent and hasattr(parent, 'league_view_teams'):
+                    if hasattr(parent.league_view_teams, 'tree1_bottom'):
+                        parent.league_view_teams.tree1_bottom.clear()
+                    if hasattr(parent.league_view_teams, 'tree2_bottom'):
+                        parent.league_view_teams.tree2_bottom.clear()
+                if parent and hasattr(parent, 'leaderboard') and hasattr(parent.leaderboard, 'tree_widget'):
+                    parent.leaderboard.tree_widget.clear()
+            except Exception as e:
+                print(f"Warning clearing in-memory/GUI on replace: {e}")
+            # Recreate schema
+            try:
+                init_new_db(db_path, league)
+            except Exception as e:
+                print(f"Error initializing DB on replace: {e}")
+                return
+            mode = "overwrite"
+        elif strategy == "merge":
+            mode = "merge"
 
     # Step 4: Insert CSVs (collect to local instance stack regardless of caller)
     conn = sqlite3.connect(db_path)
@@ -892,7 +1333,12 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
     try:
         instances = local_stack.getInstances()
         if instances:
-            load_all_gui(instances, parent, league)
+            load_all_gui(instances, parent, league, mode)
+            # After in-memory recompute, persist derived stats to DB for consistency
+            try:
+                persist_derived_stats_to_db(db_path, league)
+            except Exception as e:
+                print(f"Note: derived stats persistence failed: {e}")
     except Exception as e:
         import traceback
         print(f"Build GUI after CSV import failed: {e}")

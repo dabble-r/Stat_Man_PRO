@@ -130,7 +130,11 @@ class UpdateOffenseDialog(QDialog):
         if find_team:
             find_player = find_team.get_player(player)
             if find_player:
-                at_bat = find_player.at_bat 
+                # Coerce to int to avoid type errors if at_bat was a string
+                try:
+                    at_bat = int(float(find_player.at_bat))
+                except Exception:
+                    at_bat = 0
                 if at_bat > 0:
                     print('stats exist')
                     self.enable_buttons()
@@ -208,7 +212,36 @@ class UpdateOffenseDialog(QDialog):
 
         player, team, avg = self.selected
         find_team = self.league.find_team(team)
+        if not find_team:
+            self.message.show_message("Selected team is no longer available. Refresh and try again.")
+            return
         find_player = find_team.get_player(player)
+        if not find_player:
+            self.message.show_message("Selected player is no longer available. Refresh and try again.")
+            return
+
+        # Normalize numeric fields on the target player to avoid string concatenation
+        try:
+            numeric_fields = ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly']
+            for f in numeric_fields:
+                if hasattr(find_player, f):
+                    try:
+                        curr = getattr(find_player, f)
+                        if isinstance(curr, str):
+                            if curr.strip() == '':
+                                setattr(find_player, f, 0)
+                            else:
+                                # allow floats in string but store as int
+                                if '.' in curr:
+                                    setattr(find_player, f, int(float(curr)))
+                                else:
+                                    setattr(find_player, f, int(curr))
+                        elif isinstance(curr, float):
+                            setattr(find_player, f, int(curr))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
         #print('player msg inst - update', find_player.message)
 
