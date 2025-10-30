@@ -351,6 +351,12 @@ def load_all_gui(instances, parent, league):
                 except Exception:
                     parsed = val
                 load_team_gui(attr, parsed, team)
+            elif attr == 'logo':
+                # Keep logo as string path - GUI will convert to QIcon when displaying
+                if val and val not in (0, '0', 0.0, '0.0', ''):
+                    load_team_gui(attr, val, team)
+                else:
+                    team.logo = None
             elif attr in ('teamID', 'leagueID'):
                 # normalize numeric ids (handle '01', '1 ', '1.0')
                 def _normalize_id_local(v):
@@ -489,8 +495,14 @@ def load_all_gui(instances, parent, league):
                     load_player_gui(attr, val, player)
             elif attr == 'team':
                 fallback_team_name = val
-                # still set field on player for completeness
-                load_player_gui(attr, val, player)
+                # DON'T set player.team to the string - we'll set it later after resolving the Team object
+            elif attr == 'image':
+                # Keep image as string path for player - stat dialog handles conversion
+                # Don't convert to QIcon here, just store the path
+                if val and val not in (0, '0', 0.0, '0.0', ''):
+                    player.image = val
+                else:
+                    player.image = None
             else:
                 if val in (0, '0', 0.0, '0.0'):
                     continue
@@ -504,21 +516,34 @@ def load_all_gui(instances, parent, league):
                 find_team = None
         if find_team is None and pending_team_id is not None:
             find_team = _resolve_team_by_id_or_name(pending_team_id, None)
-        # if player is a pitcher per positions, convert to Pitcher
-        if 'pitcher' in parsed_positions:
-            temp = player
-            pitcher_player = Pitcher(temp.name, temp.number, temp.team, temp.league, positions=parsed_positions)
-            # copy offense stats and ids
-            for k in ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly','OBP','BABIP','SLG','AVG','ISO','image','playerID','leagueID','teamID']:
-                setattr(pitcher_player, k, getattr(temp, k, getattr(pitcher_player, k, 0)))
-            player = pitcher_player
-
+        
+        # Validate and set team FIRST, before any type conversions
         if find_team is not None:
-            # attach and fix references, avoid duplicates (prefer playerID match)
-            player.team = find_team
-            player.teamID = find_team.teamID
-            player.league = league
-            player.leagueID = league.leagueID
+            # Validate that find_team is actually a Team object, not a string
+            if isinstance(find_team, str):
+                print(f"ERROR: find_team is a string '{find_team}' instead of a Team object for player {getattr(player, 'name', 'unknown')}")
+                print(f"  fallback_team_name: {fallback_team_name}")
+                print(f"  pending_team_id: {pending_team_id}")
+                find_team = None  # Set to None so it's handled below
+            
+            if find_team is not None:
+                # Set team references on player first
+                player.team = find_team
+                player.teamID = find_team.teamID
+                player.league = league
+                player.leagueID = league.leagueID
+                
+                # NOW convert to Pitcher if needed (after team is set properly)
+                if 'pitcher' in parsed_positions:
+                    temp = player
+                    pitcher_player = Pitcher(temp.name, temp.number, temp.team, temp.league, positions=parsed_positions)
+                    # copy offense stats and ids
+                    for k in ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly','OBP','BABIP','SLG','AVG','ISO','image','playerID','leagueID','teamID']:
+                        setattr(pitcher_player, k, getattr(temp, k, getattr(pitcher_player, k, 0)))
+                    player = pitcher_player
+            else:
+                print(f"Warning: team not found for player {getattr(player, 'name', '')} (after validation)")
+                continue  # Skip this player
             exists = False
             pid = getattr(player, 'playerID', None)
             for existing in find_team.players:
@@ -536,7 +561,9 @@ def load_all_gui(instances, parent, league):
     # Pitchers
     for item in pitcher_items:
         vals = list(item.values()).pop()
-        pitcher = Pitcher('pitcher', 0, 'team', league)
+        # Create a temporary placeholder team object to initialize the pitcher
+        temp_team = Team(league, 'placeholder', 'manager')
+        pitcher = Pitcher('pitcher', 0, temp_team, league)
         find_team = None
         fallback_team_name = None
         captured_player_id = None
@@ -559,7 +586,13 @@ def load_all_gui(instances, parent, league):
                 load_player_gui(attr, captured_player_id, pitcher)
             elif attr == 'team':
                 fallback_team_name = val
-                load_player_gui(attr, val, pitcher)
+                # DON'T set pitcher.team to the string - we'll set it later after resolving the Team object
+            elif attr == 'image':
+                # Keep image as string path for pitcher - stat dialog handles conversion
+                if val and val not in (0, '0', 0.0, '0.0', ''):
+                    pitcher.image = val
+                else:
+                    pitcher.image = None
             else:
                 if val in (0, '0', 0.0, '0.0'):
                     continue 
@@ -572,6 +605,14 @@ def load_all_gui(instances, parent, league):
                 find_team = None
         if find_team is None and pending_team_id is not None:
             find_team = _resolve_team_by_id_or_name(pending_team_id, None)
+        
+        # Validate that find_team is actually a Team object, not a string
+        if find_team is not None and isinstance(find_team, str):
+            print(f"ERROR: find_team is a string '{find_team}' instead of a Team object for pitcher {getattr(pitcher, 'name', 'unknown')}")
+            print(f"  fallback_team_name: {fallback_team_name}")
+            print(f"  pending_team_id: {pending_team_id}")
+            find_team = None
+        
         if find_team is not None:
             # If a matching player already exists, upgrade/merge
             existing_index = None
@@ -673,6 +714,22 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
     """
     Full workflow: session selection + database choice + overwrite choice + import + summary.
     """
+    
+    # Check if league already has data (teams/players in memory)
+    if LinkedList.COUNT > 0:
+        from PySide6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(
+            parent,
+            "League Data Exists",
+            f"The league already has {LinkedList.COUNT} team(s) loaded.\n\n"
+            "Loading new data will replace all current data in memory.\n\n"
+            "Do you want to continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.No:
+            print("Load cancelled - user chose to keep existing league data")
+            return
     
     csv_files = get_csv_files(directory)
     sessions = group_csv_by_session(csv_files)
@@ -796,7 +853,9 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
         if instances:
             load_all_gui(instances, parent, league)
     except Exception as e:
+        import traceback
         print(f"Build GUI after CSV import failed: {e}")
+        print(f"Full traceback:\n{traceback.format_exc()}")
 
     # Step 5: Show summary
     summary_dialog = SummaryDialog(summary, parent=parent)

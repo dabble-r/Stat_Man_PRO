@@ -427,6 +427,7 @@ class Save():
     return False
 
   def save_team(self):
+    print("save_team - Starting...")
     def keep_attrs(obj):
       keep = ['teamID', 'name', 'leagueID', 'league', 'logo', 'manager', 'players', 'lineup', 'positions', 'wins', 'losses', 'games_played', 'wl_avg', 'bat_avg', 'team_era', 'max_roster']
       dir_list = [x for x in keep if self.sql_safe(x)] 
@@ -436,16 +437,17 @@ class Save():
     con, cur = self.open_db()
 
     if self.table_exists(con, cur, 'team'):
-        #print('league exists--table team exists')
+        print('save_team - Table "team" exists')
         
         objsTeam = self.league.get_all_objs()
+        print(f'save_team - Found {len(objsTeam)} teams in league memory')
 
         res = cur.execute(f"SELECT teamID FROM team")
         ret = res.fetchall()
         
         # check for league name duplicate 
         if len(ret) == 0:
-          #print('no teams in db!')
+          print(f'save_team - No teams in DB yet, inserting {len(objsTeam)} teams...')
           for i in range(len(objsTeam)):
             ##print('team to save:', objsTeam[i].name)
             team_name = objsTeam[i].name
@@ -499,8 +501,10 @@ class Save():
                   f"INSERT INTO team ({column_str}) VALUES ({placeholders})",
                   tuple(vals)
               )
+            print(f'  - Inserted team: {team_name}')
             
           con.commit()
+          print(f'save_team - Committed {len(objsTeam)} teams to database')
 
         # check for league name duplicate 
         elif len(ret) >= 1:
@@ -567,6 +571,7 @@ class Save():
             con.commit()
 
         con.close()
+        print("save_team - Connection closed")
   
   def update_team(self, con, cur, team_obj, keep_func):
     #print('Update: ', team_obj.name)
@@ -622,7 +627,7 @@ class Save():
     con.commit()
      
   def save_player(self):
-    ##print('save player!')
+    print("save_player - Starting...")
     def keep_attrs_player(obj):
       keep = ['playerID', 'name', 'leagueID', 'teamID', 'number', 'team', 'positions', 'pa', 'at_bat', 'fielder_choice', 'hit', 'bb', 'hbp', 'so', 'hr', 'rbi', 'runs', 'singles', 'doubles', 'triples', 'sac_fly', 'OBP', 'BABIP', 'SLG', 'AVG', 'ISO', 'image']
       dir_list = [x for x in keep if self.sql_safe(x)] 
@@ -917,7 +922,9 @@ class Save():
     return isinstance(val, (type(None), int, float, str))
 
   def save_csv(self, db_path, csv_path):
-    print(f"save_csv - Attempting to connect to database: {db_path}")
+    print(f"\n=== save_csv START ===")
+    print(f"save_csv - Database path: {db_path}")
+    print(f"save_csv - CSV export path: {csv_path}")
     
     # Verify database file exists
     if not os.path.exists(db_path):
@@ -945,7 +952,16 @@ class Save():
     try: 
       cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
       tables = [row[0] for row in cur.fetchall()]
-      print(f"save_csv - Found tables: {tables}")
+      print(f"save_csv - Found {len(tables)} tables in database: {tables}")
+      
+      # Check row counts for each table
+      for table in tables:
+        try:
+          cur.execute(f"SELECT COUNT(*) FROM {table}")
+          count = cur.fetchone()[0]
+          print(f"  - {table}: {count} rows")
+        except Exception as e:
+          print(f"  - {table}: Error counting rows: {e}")
     
     except Exception as e:
       print(f'Error querying database tables: {e}')
@@ -997,7 +1013,12 @@ class Save():
   # ------------------------------------------------------------------------------------------------- #
   # currently in use
   def save_master(self, db_path, csv_path):
-    print("save master")
+    print("\n" + "="*60)
+    print("save_master - STARTING")
+    print(f"  db_path parameter: {db_path}")
+    print(f"  csv_path parameter: {csv_path}")
+    print(f"  self.db: {self.db}")
+    print("="*60 + "\n")
     db_was_initialized = False  # Track if we created a fresh DB
     
     result = self.open_db() 
@@ -1013,13 +1034,48 @@ class Save():
       con, cur = result
 
     res = cur.execute("SELECT name from sqlite_master where type='table'")
-    ret = [row[0] for row in res.fetchall()]
+    all_tables = [row[0] for row in res.fetchall()]
+    # Filter out system tables - only check for actual data tables
+    ret = [t for t in all_tables if t not in ('sqlite_sequence', 'sqlite_stat1')]
 
-    print("save master - db fetch all:", res, ret)
+    print("save master - db fetch all:", res, all_tables)
+    print(f"save master - data tables (excluding system tables): {ret}")
     if len(ret) == 0:
       print('No tables found! Creating new database...')
+      con.close()  # Close old connection before creating new DB
       self.init_new_db()
       db_was_initialized = True  # DB was just created with league data
+      # Reconnect after init_new_db to see the new tables
+      result = self.open_db()
+      con, cur = result
+      print("save master - Reconnected after init_new_db")
+    else:
+      # Tables exist - check if there's stale data that conflicts with current save
+      # This handles the case where user loaded CSV, removed from memory, then added new data
+      try:
+        cur.execute("SELECT leagueID FROM league")
+        existing_leagues = cur.fetchall()
+        if existing_leagues:
+          existing_id = existing_leagues[0][0]
+          current_id = self.league.leagueID
+          print(f"save master - DB has league {existing_id}, memory has league {current_id}")
+          
+          # If different league IDs, we need to clear and rebuild
+          if existing_id != current_id:
+            print("save master - League ID mismatch! Clearing DB and rebuilding...")
+            # Drop all tables
+            for table_name in ret:
+              cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+            con.commit()
+            con.close()
+            # Rebuild database
+            self.init_new_db()
+            db_was_initialized = True
+            result = self.open_db()
+            con, cur = result
+            print("save master - Database rebuilt with new league")
+      except Exception as e:
+        print(f"save master - Could not check for stale data: {e}")
 
     if 'csv' not in self.selection:
       print('save master - no CSV option - Database only')
@@ -1029,15 +1085,17 @@ class Save():
         # If save_league() recreated the DB, it already has league data
         if result == True:
           db_was_initialized = True
-      # Reconnect if database was dropped and recreated
+      # Close connection before calling save_team/save_player (they open their own)
       con.close()
-      result = self.open_db()
-      con, cur = result
+      # save_team() and save_player() will open, use, and close their own connections
       self.save_team()
       self.save_player()
 
     elif 'database' not in self.selection:
       print('save master - no DB option - CSV only')
+      # Close connection before CSV export
+      con.commit()
+      con.close()
       self.save_csv(self.db, csv_path) 
     
     else:
@@ -1048,17 +1106,31 @@ class Save():
         # If save_league() recreated the DB, it already has league data
         if result == True:
           db_was_initialized = True
-      # Reconnect if database was dropped and recreated in save_league
+      # Close connection before calling save_team/save_player (they open their own)
       con.close()
-      result = self.open_db()
-      con, cur = result
+      # save_team() and save_player() will open, use, and close their own connections
       self.save_team()
+      print("save_master - save_team() completed")
       self.save_player()
-
+      print("save_master - save_player() completed")
+      
+      # Verify data was written (open a fresh connection just for verification)
+      try:
+          verify_con, verify_cur = self.open_db()
+          verify_cur.execute("SELECT COUNT(*) FROM league")
+          league_count = verify_cur.fetchone()[0]
+          verify_cur.execute("SELECT COUNT(*) FROM team")
+          team_count = verify_cur.fetchone()[0]
+          verify_cur.execute("SELECT COUNT(*) FROM player")
+          player_count = verify_cur.fetchone()[0]
+          print(f"save_master - After save: league={league_count}, teams={team_count}, players={player_count}")
+          verify_con.close()
+      except Exception as e:
+          print(f"save_master - Could not verify row counts: {e}")
+      
+      print("save_master - Database operations completed, now calling save_csv()")
+      
       self.save_csv(self.db, csv_path)
-
-    con.commit()
-    con.close()
   
   def parse_json(self, raw, fallback=None):
     try:

@@ -125,12 +125,17 @@ class SaveCSVHandler:
         # Export DB tables to CSVs inside final_folder
         try:
             print("Export CSV files!")
-            # Ensure db at db_path exists
-            self.save_csv.save_master(self.db_path, final_folder)
+            # Pass the full database file path, not just the directory
+            db_file_path = self.db_path / "League.db"
+            print(f"SaveCSVHandler - Calling save_master with db: {db_file_path}, csv: {final_folder}")
+            self.save_csv.save_master(db_file_path, final_folder)
 
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"ERROR in SaveCSVHandler.run():\n{error_details}")
             QMessageBox.critical(self.parent, "Export error",
-                                 f"An error occurred while exporting CSVs:\n{e}")
+                                 f"An error occurred while exporting CSVs:\n{e}\n\n{error_details}")
             return
 
         QMessageBox.information(self.parent, "Export complete",

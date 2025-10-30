@@ -165,12 +165,47 @@ class MainWindow(QWidget):
             )
 
         if reply == QMessageBox.StandardButton.Yes:
+            # Clear database on close - database doesn't persist between sessions
+            self._clear_database_on_close()
             event.accept()
             
         if reply == QMessageBox.StandardButton.No:
             event.ignore()
             self.show()
             #self.show()
+    
+    def _clear_database_on_close(self):
+        """Clear all data from database on application close"""
+        from pathlib import Path
+        import sqlite3
+        
+        db_path = Path("Saved/DB/League.db")
+        
+        if not db_path.exists():
+            print("No database to clear on close.")
+            return
+        
+        try:
+            print(f"Clearing database on close: {db_path}")
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            # Get all table names
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+            tables = cursor.fetchall()
+            
+            # Drop all tables
+            for table in tables:
+                table_name = table[0]
+                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+                print(f"  Dropped table: {table_name}")
+            
+            conn.commit()
+            conn.close()
+            print("Database cleared on close.")
+            
+        except Exception as e:
+            print(f"Error clearing database on close: {e}")
 
     
     '''def exec_wizard(self):

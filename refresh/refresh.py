@@ -48,8 +48,15 @@ class Refresh():
   def get_logo(self, team):
     logo = None
     find_team = self.league.find_team(team)
-    if find_team:
-      logo = find_team.logo
+    if find_team and find_team.logo:
+      # Convert string path to QIcon for display
+      from Files.image import Icon
+      try:
+        icon_obj = Icon(find_team.logo)
+        logo = icon_obj.create_icon()
+      except Exception as e:
+        print(f"Warning: Could not load team logo from '{find_team.logo}': {e}")
+        logo = None
     return logo
 
   def restore_view(self, lst, view, widget, num):

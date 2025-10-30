@@ -110,8 +110,17 @@ class LeagueViewTeams(QWidget):
             wl_avg = item.text(1)
             if team == name_target:
                 ###print("team match:", team, wl_avg)
-                item.setText(1, wl_avg_upd) 
-                item.setIcon(0, target.logo)
+                item.setText(1, wl_avg_upd)
+                # Convert string path to QIcon for display
+                if target.logo:
+                    from Files.image import Icon
+                    try:
+                        icon_obj = Icon(target.logo)
+                        logo_icon = icon_obj.create_icon()
+                        if logo_icon:
+                            item.setIcon(0, logo_icon)
+                    except Exception as e:
+                        print(f"Warning: Could not load team logo: {e}")
             i += 1
 
     def refresh_league_view_avg(self, target):
@@ -127,6 +136,16 @@ class LeagueViewTeams(QWidget):
             if team == name_target:
                 ###print("team match:", team, wl_avg)
                 item.setText(1, bat_avg_upd)
+                # Convert string path to QIcon for display
+                if target.logo:
+                    from Files.image import Icon
+                    try:
+                        icon_obj = Icon(target.logo)
+                        logo_icon = icon_obj.create_icon()
+                        if logo_icon:
+                            item.setIcon(0, logo_icon)
+                    except Exception as e:
+                        print(f"Warning: Could not load team logo: {e}")
             i += 1
     
     def remove_league_view_wl(self, target):

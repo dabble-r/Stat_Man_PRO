@@ -110,9 +110,17 @@ class RemoveDialog(QDialog):
                 return
 
             team, avg = self.selected
+            print(f"\n=== REMOVE TEAM - DEBUG ===")
+            print(f"Selected team name: '{team}'")
+            print(f"LinkedList.COUNT before removal: {LinkedList.COUNT}")
+            print(f"All teams in league: {[t.name for t in self.league.get_all_objs()]}")
+            
             find_team = self.league.find_team(team)
+            print(f"Found team object: {find_team.name if find_team else 'None'}")
 
             if find_team:
+                print(f"Team has {len(find_team.players)} players: {[p.name for p in find_team.players]}")
+                
                 self.lv_teams.remove_league_view_wl(find_team)
                 self.lv_teams.remove_league_view_avg(find_team)
 
@@ -121,7 +129,11 @@ class RemoveDialog(QDialog):
                     self.lv_players.remove_league_view(el)
                     self.leaderboard.refresh_leaderboard_removal(el)
                 
-                self.league.remove_team(team) 
+                print(f"About to call self.league.remove_team('{team}')")
+                self.league.remove_team(team)
+                print(f"LinkedList.COUNT after removal: {LinkedList.COUNT}")
+                print(f"All teams remaining: {[t.name for t in self.league.get_all_objs()]}")
+                print("=== END DEBUG ===\n") 
 
         elif len(self.selected) == 3:
             ques = QMessageBox(self)

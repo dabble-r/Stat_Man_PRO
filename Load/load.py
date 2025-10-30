@@ -864,6 +864,7 @@ def load_all_from_db(db_path: str, parent) -> Optional[LinkedList]:
           pass
 
       # Simple fields
+      # Keep logo as string path - GUI will convert to QIcon when displaying
       team.logo = trow.get('logo')
       team.wins = int(trow.get('wins') or 0)
       team.losses = int(trow.get('losses') or 0)
@@ -938,7 +939,12 @@ def load_all_from_db(db_path: str, parent) -> Optional[LinkedList]:
           setattr(player, key, float(prow.get(key) or 0.0))
         except Exception:
           setattr(player, key, 0.0)
-      player.image = prow.get('image')
+      # Keep image as string path for player - stat dialog handles conversion
+      image_path = prow.get('image')
+      if image_path and image_path not in (0, '0', 0.0, '0.0', ''):
+          player.image = image_path
+      else:
+          player.image = None
 
       # Pitching stats if applicable
       if pitcher_row is not None and isinstance(player, Pitcher):
