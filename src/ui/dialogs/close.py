@@ -5,12 +5,14 @@ import sys
 
 class CloseDialog(QDialog):
     def __init__(self):
+        """Simple confirmation dialog to guard against accidental app exit."""
         super().__init__()
         self.setWindowTitle("Confirm Exit")
         self.setModal(True)
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
 
     def close_message(self, event=QCloseEvent):
+        """Ask user to confirm closing; accept or ignore the provided close event."""
         reply = QMessageBox.question(
                 self,
                 "Confirm Close",

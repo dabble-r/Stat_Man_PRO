@@ -1,9 +1,11 @@
 class Undo():
   def __init__(self, stack, league):
+    """Undo helper that reverts the last action recorded in the provided stack."""
     self.stack = stack
     self.league = league
   
   def undo_exp(self):
+    """Pop and revert the last stack action by restoring previous values/structures."""
     if self.stack.is_empty():
       return 
   

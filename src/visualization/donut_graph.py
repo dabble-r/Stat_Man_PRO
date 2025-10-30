@@ -13,6 +13,7 @@ from PySide6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice
 
 class MainSlice(QPieSlice):
     def __init__(self, breakdown_series, parent=None):
+        """A central pie slice that mirrors the sum of its breakdown series."""
         super().__init__(parent)
 
         self.breakdown_series = breakdown_series
@@ -21,9 +22,11 @@ class MainSlice(QPieSlice):
         self.percentageChanged.connect(self.update_label)
 
     def get_breakdown_series(self):
+        """Return the QPieSeries providing sub-slices for this main slice."""
         return self.breakdown_series
 
     def set_name(self, name):
+        """Set display name for this main slice (used in labels)."""
         self.name = name
 
     def name(self):
@@ -31,11 +34,13 @@ class MainSlice(QPieSlice):
 
     @Slot()
     def update_label(self):
+        """Update centered label to show name and current percentage."""
         p = self.percentage() * 100
         self.setLabel(f"{self.name} {p:.2f}%")
 
 class DonutBreakdownChart(QChart):
     def __init__(self, data, colors=[], parent=None):
+        """Donut chart with outer breakdown rings built from input data series."""
         super().__init__(QChart.ChartTypeCartesian,
                          parent, Qt.WindowFlags())
         self.main_series = QPieSeries()
@@ -47,6 +52,7 @@ class DonutBreakdownChart(QChart):
         self.series_dict = {}
 
     def add_breakdown_series(self, breakdown_series, color):
+        """Add a breakdown series as outer ring and a matching main slice segment."""
         font = QFont("Arial", 14)
 
         # add breakdown series as a slice to center pie
@@ -82,6 +88,7 @@ class DonutBreakdownChart(QChart):
         self.update_legend_markers()
 
     def recalculate_angles(self):
+        """Recompute start/end angles for each breakdown ring from main slice percents."""
         angle = 0
         slices = self.main_series.slices()
         for pie_slice in slices:
@@ -91,6 +98,7 @@ class DonutBreakdownChart(QChart):
             breakdown_series.setPieEndAngle(angle)
 
     def update_legend_markers(self):
+        """Hide main-series legend markers; annotate breakdown markers with percentages."""
         # go through all markers
         for series in self.series():
             markers = self.legend().markers(series)

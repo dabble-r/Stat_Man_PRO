@@ -4,16 +4,19 @@ from PySide6.QtWidgets import QTreeView, QTreeWidget
 
 class TreeEventFilter_1(QObject):
     def __init__(self, trees_lst):
+        """Legacy filter to enforce single selection and clear selection on whitespace."""
         super().__init__()
         self.trees = trees_lst
         self.tree_obj_names = self.get_obj_name()
     
     def set_selection_mode(self):
+        """Set single-selection mode on all tracked tree widgets."""
         for tree in self.trees:
             tree.setSelectionMode(QAbstractItemView.SingleSelection)
 
     
     def eventFilter(self, obj, event):
+        """Clear selection when clicking whitespace in any managed tree widget."""
         for tree in self.trees:
             if obj == tree.viewport():
                 if event.type() == QEvent.Type.MouseButtonPress:
@@ -27,6 +30,7 @@ class TreeEventFilter_1(QObject):
         return False
     
     def limit_one_selection(self):
+        """Ensure that only one tree has a selection at any time by clearing others."""
         ##print("new selection")
         self.set_selection_mode()
         for tree in self.trees:
@@ -43,6 +47,7 @@ class TreeEventFilter_1(QObject):
         ##print(self.tree_obj_names)
 
     def get_obj_name(self):
+        """Build a map of tree objectName → list of other trees to clear when selected."""
         ret = {}
         for tree in self.trees:
             temp = tree.objectName()
@@ -54,11 +59,13 @@ class TreeEventFilter_1(QObject):
 
 class TreeEventFilter(QObject):
     def __init__(self, trees_lst, parent):
+        """Current event filter to unify selection behavior across multiple trees."""
         super().__init__()
         self.trees = trees_lst
         self.parent = parent
 
     def eventFilter(self, obj, event):
+        """Clear other trees, set selection on click, or clear all on whitespace click."""
         if event.type() == QEvent.Type.MouseButtonPress:
             for tree in self.trees:
                 if obj == tree.viewport():

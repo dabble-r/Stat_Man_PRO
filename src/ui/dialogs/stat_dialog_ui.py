@@ -33,6 +33,7 @@ import sys
 
 class Ui_StatDialog(QDialog):
     def __init__(self, league, message, selected, styles, parent=None):
+        """Stats dialog showing charts and trees for a selected player/team context."""
         super().__init__(parent)
         self.league = league
         self.message = message

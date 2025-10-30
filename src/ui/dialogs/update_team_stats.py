@@ -11,6 +11,7 @@ import random
 
 class UpdateTeamStatsDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, styles, parent=None):
+        """Dialog to edit team-level stats (games/wins/losses) and view aggregates."""
         super().__init__(parent)
         self.league = league
         self.selected = selected

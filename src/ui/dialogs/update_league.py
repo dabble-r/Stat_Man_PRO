@@ -9,6 +9,7 @@ import random
 
 class UpdateLeagueDialog(QDialog):
     def __init__(self, league, selected, message, leaderboard, lv_teams, stack, undo, styles, parent=None):
+        """Dialog to update league admin fields, season dates, and theme; includes launcher."""
         super().__init__(parent)
         self.league = league
         self.selected = selected

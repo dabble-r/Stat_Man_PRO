@@ -34,6 +34,7 @@ PITCHER_NUMERIC_ADD = {"wins","losses","games_played","games_started","games_com
 PITCHER_DERIVED = {"WHIP","p_avg","k_9","bb_9","era"}
 
 def _to_int(val):
+    """Return val coerced to int; tolerate strings/floats/None by returning 0 on failure."""
     try:
         if val is None or val == "":
             return 0
@@ -52,6 +53,7 @@ def _to_int(val):
         return 0
 
 def _normalize_numeric_attrs(obj, fields):
+    """Coerce listed numeric attributes on obj to ints in-place to ensure arithmetic safety."""
     try:
         for f in fields:
             if hasattr(obj, f):
@@ -329,11 +331,13 @@ class SummaryDialog(QDialog):
 
 # ----------------------- CSV Loader Utilities -----------------------
 def get_csv_files(directory: str) -> list:
+    """Recursively collect .csv files under directory; used to assemble a load session."""
     # Search recursively to include session subfolders like CSV/save_1/*.csv
     return glob.glob(os.path.join(directory, "**", "*.csv"), recursive=True)
 
 
 def group_csv_by_session(csv_files: list) -> dict:
+    """Group CSVs by session key derived from filename; ignore non-data/system files."""
     """Group CSV files by session timestamp, ignore sqlite_sequence."""
     session_pattern = re.compile(
         r"^(league|team|player|pitcher)_([0-9]+(?:\([0-9]+\))?)\.csv$", re.IGNORECASE
@@ -353,6 +357,7 @@ def group_csv_by_session(csv_files: list) -> dict:
 
 
 def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mode: str, summary: dict, stack: InstanceStack, parent, league: LinkedList):
+    """Insert/update table from a CSV file using mode (overwrite/skip/merge); collect instances."""
     """Insert CSV into SQLite table according to mode: overwrite/skip/merge.
 
     - overwrite: INSERT OR REPLACE entire rows
@@ -483,6 +488,7 @@ def insert_csv_to_table(table: str, csv_path: str, conn: sqlite3.Connection, mod
     # will be collected across calls via the shared InstanceStack.
 
 def load_all_gui(instances, parent, league, mode=None):
+    """Materialize league/team/player/pitcher from collected instances and refresh GUI once."""
     # Process in deterministic order: league -> team -> player -> pitcher
     league_items = []
     team_items = []
@@ -1103,19 +1109,24 @@ def load_all_gui(instances, parent, league, mode=None):
         print(f"Refresh note: {e}")
         
 def load_league_gui(attr, val, league):
+    """Set league attribute during GUI/in-memory build."""
     setattr(league, attr, val)
 
 def load_team_gui(attr, val, team):
+    """Set team attribute during GUI/in-memory build."""
     setattr(team, attr, val)
 
 def load_player_gui(attr, val, player):
+    """Set player attribute during GUI/in-memory build."""
     setattr(player, attr, val) 
 
 def load_pitcher_gui(attr, val, pitcher):
+    """Set pitcher attribute during GUI/in-memory build."""
     setattr(pitcher, attr, val)
 
 # ----------------------- Persistence Helpers -----------------------
 def persist_derived_stats_to_db(db_path: str, league: LinkedList):
+    """Write recalculated player/pitcher derived stats back to DB to keep storage consistent."""
     """Write recalculated derived stats back to the database for consistency."""
     try:
         conn = sqlite3.connect(db_path)
@@ -1165,6 +1176,7 @@ def persist_derived_stats_to_db(db_path: str, league: LinkedList):
 
 # ----------------------- Full CSV Loader -----------------------
 def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None):
+    """End-to-end CSV import: session select → DB choice/strategy → import → build → summary."""
     """
     Full workflow: session selection + database choice + overwrite choice + import + summary.
     """

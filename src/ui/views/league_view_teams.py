@@ -25,6 +25,7 @@ import random
 
 class LeagueViewTeams(QWidget):
     def __init__(self, league, styles, stack, file_dir, message, parent=None):
+        """Bottom pane showing teams sorted by W-L and AVG with logos and actions."""
         super().__init__()
         self.setObjectName("league view teams - bottom")
         self.leaderboard_AVG = []
@@ -92,6 +93,7 @@ class LeagueViewTeams(QWidget):
         self.stat_widget = QDialog(self)'''
 
     def new_team_setup(self):
+        """Open modal to create a new team and append to both team trees."""
         ##print("add new team")
         self.new_team_ui.setupUi(self.new_team_widget)
         self.new_team_widget.setWindowTitle("Add New Team")
@@ -99,6 +101,7 @@ class LeagueViewTeams(QWidget):
         self.new_team_widget.exec()
     
     def refresh_league_view_wl(self, target):
+        """Update W-L tree item for team and refresh its icon if present."""
         count = self.tree1_bottom.topLevelItemCount()
         name_target = target.name
         wl_avg_upd = target.get_wl_avg()
@@ -124,6 +127,7 @@ class LeagueViewTeams(QWidget):
             i += 1
 
     def refresh_league_view_avg(self, target):
+        """Update AVG tree item for team and refresh its icon if present."""
         count = self.tree2_bottom.topLevelItemCount()
         name_target = target.name
         bat_avg_upd = target.get_bat_avg()

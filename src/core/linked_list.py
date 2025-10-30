@@ -266,6 +266,7 @@ class LinkedList():
     # --------------------------------------------------------------- #
   
   def add_team(self, val):
+    """Append a Team node to the end of the league list and increment COUNT."""
     new_node = Node(val)
     if self.head == None:
       self.head = new_node 
@@ -281,6 +282,7 @@ class LinkedList():
     return
   
   def remove_team(self, target): 
+      """Remove first Team node whose name matches target; update COUNT accordingly."""
       if self.head.team.name == target and LinkedList.COUNT == 1:
         self.head = None
         LinkedList.COUNT -= 1
@@ -314,6 +316,7 @@ class LinkedList():
       ###print('end of list')
   
   def find_team(self, target):
+    """Return Team by case-insensitive name match, or None if not present."""
     def _norm(s):
       try:
         return str(s).strip().lower()
@@ -334,6 +337,7 @@ class LinkedList():
     return None
   
   def find_teamID(self, target):
+    """Return Team by exact teamID match (int), or None if not present."""
     traverser = self.head
     if traverser == None:
       ###print('No teams in league\n')
@@ -362,6 +366,7 @@ class LinkedList():
     return
 
   def view_all(self):
+    """Return string summary of teams and first-position players across league."""
     if LinkedList.COUNT == 0:
       ##print('No teams in league')
       return ''

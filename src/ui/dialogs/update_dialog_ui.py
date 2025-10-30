@@ -13,6 +13,7 @@ import random
 
 class UpdateDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, file_dir, styles, message, parent=None):
+        """Hub dialog for updating players/teams (offense, pitching, admin, team stats)."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -98,11 +99,13 @@ class UpdateDialog(QDialog):
             self.setLayout(main_layout)
 
     def update_offense_handler(self):
+        """Open the offense update dialog for the selected player."""
         dialog = UpdateOffenseDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.styles, self.message, parent=self)
         dialog.setStyleSheet("QDialog { border: 2px solid black; }")
         dialog.exec()
     
     def update_pitching_handler(self):
+        """Open the pitching update dialog if player has 'pitcher' in positions."""
         player, team, avg = self.selected
         find_team = self.league.find_team(team)
         find_player = find_team.get_player(player)
@@ -114,14 +117,17 @@ class UpdateDialog(QDialog):
             dialog.exec()
     
     def update_admin_handler(self):
+        """Open management/admin dialog to edit team admin fields."""
         dialog = UpdateAdminDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.message, parent=self)
         dialog.exec()
 
     def update_team_stats_handler(self):
+        """Open team stats dialog for computed/display team statistics."""
         dialog = UpdateTeamStatsDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.message, self.styles, parent=self)
         dialog.exec()
     
     def upload_dialog(self):
+        """Open file picker, build icon from selected path, and apply to current team/player."""
         ##print("upload")
         # open window to select file 
         # set a file path to file selected 

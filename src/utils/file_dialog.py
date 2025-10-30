@@ -6,6 +6,7 @@ import platform
 
 class FileDialog(QWidget):
     def __init__(self, message, parent=None, flag=None):
+        """Light wrapper around QFileDialog to pick files/folders for save/load flows."""
         super().__init__()
         self.setWindowTitle("File Dialog Example")
         self.setGeometry(100, 100, 400, 200)
@@ -22,6 +23,7 @@ class FileDialog(QWidget):
 
     # deprecated
     def open_dual_file_dialog(self):
+        """Pick DB and CSV files in sequence; returns (db_file, csv_file) or None if canceled."""
         print("Opening dual file dialog...")
 
         # --- Select SQLite DB File ---
@@ -67,6 +69,7 @@ class FileDialog(QWidget):
             self.message.show_message(f"Error:\n{e}")
    
     def open_file_dialog(self):
+        """Open file or directory selection depending on flag ('save' or 'load'); returns path."""
         print("open dialog")
         filter_str = None
         selected = None
@@ -126,6 +129,7 @@ class FileDialog(QWidget):
     
     # not in use
     def open_file_dialog_csv(self):
+        """Pick a single CSV file path; shows message if canceled; returns nothing."""
         print("open dialog csv")
         filter_str = None
         if self.flag == 'save':
@@ -176,16 +180,20 @@ class FileDialog(QWidget):
             return 
         
     def get_cwd(self):
+        """Return current working directory resolved by os.getcwd()."""
         cwd = os.getcwd()
         return cwd
     
     def get_file_path(self):
+        """Return last selected file path (absolute) or None if none selected."""
         return self.file_path
     
     def get_db_path(self):
+        """Return last selected DB path or None if none selected."""
         return self.db_path
     
     def get_csv_path(self):
+        """Return last selected CSV path or None if none selected."""
         return self.csv_path
         
     

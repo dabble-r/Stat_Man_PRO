@@ -6,6 +6,7 @@ from PySide6.QtCore import QCoreApplication, Qt, QTimer, QRect
 
 class UpdateTheme(QDialog):
     def __init__(self, styles, message, parent=None):
+        """Dialog to switch application theme by selecting a stylesheet variant."""
         super().__init__(parent)
         self.styles = styles
         self.message = message
@@ -63,6 +64,7 @@ class UpdateTheme(QDialog):
         self.setLayout(main_layout)
     
     def radio_btns_setup(self):
+      """Populate radio group with available theme names derived from styles object."""
       options = ["default"]
       options = [self.format_theme(style) for style in dir(self.styles) if "styles" in style]
 
@@ -75,17 +77,20 @@ class UpdateTheme(QDialog):
           self.radio_buttons_layout.addWidget(radio)
 
     def format_theme(self, str):
+      """Humanize internal style attribute name (snake_case_styles) for display."""
       str = str.replace("_", " ")
       str = str[0].upper() + str[1:len(str)-7]
       lst = [el[0].upper() + el[1:] for el in str.split(" ")]
       return " ".join(lst)
     
     def no_format_theme(self, str):
+      """Convert display label back to internal style attribute name."""
       str = str.lower()
       str = str.replace(" ", "_") + "_styles"
       return str
     
     def get_theme(self):
+      """Apply selected theme to main window and enable dependent controls on parent."""
       selection = self.radio_group.checkedButton()
       selectionFormat = self.no_format_theme(selection.text())
       
@@ -98,6 +103,7 @@ class UpdateTheme(QDialog):
       self.close()
          
     def get_ancestry(self, widget):
+      """Return ancestor chain for widget by following parentWidget links, avoiding loops."""
       ancestry = []
       visited = set()
       current = widget
@@ -109,6 +115,7 @@ class UpdateTheme(QDialog):
       return ancestry
 
     def get_ancestor(self, str):
+      """Find ancestor widget by objectName, returning the first match or None."""
       ancestors = self.get_ancestry(self)
       #print(ancestors)
       for el in ancestors:

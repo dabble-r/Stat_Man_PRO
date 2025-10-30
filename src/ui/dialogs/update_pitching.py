@@ -9,6 +9,7 @@ import random
 
 class UpdatePitchingDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, parent=None):
+        """Pitching stat updater dialog; applies validated deltas to a selected player."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -117,6 +118,7 @@ class UpdatePitchingDialog(QDialog):
     # check for existing stats
     # enable/disable radio btns according to existing stats
     def radio_btns_stat_check(self):
+        """Enable radios if the selected player already has any pitching activity."""
         player, team, num = self.selected
         find_team = self.league.find_team(team)
         if find_team:
@@ -128,6 +130,7 @@ class UpdatePitchingDialog(QDialog):
                     self.enable_buttons()
     
     def radio_btns_setup(self):
+        """Create and configure radio buttons for supported pitching stat updates."""
         options = ["default"]
         options = ["games played", "wins", "losses", "games started", "games completed", "shutouts", "saves", "save opportunities", "IP", "at bats", "hits", "runs", "ER", "HR", "HB", "walks", "SO"]
         for i in range(len(options)):
@@ -143,15 +146,18 @@ class UpdatePitchingDialog(QDialog):
 
     
     def enable_buttons(self):
+        """Enable all radio buttons after a prerequisite stat exists."""
         for el in self.radio_buttons:
             el.setEnabled(True)
 
     def get_player_stat(self):
+        """Return the currently selected radio stat label (as displayed)."""
         # radio button selection 
         selection = self.radio_group.checkedButton().text()
         return selection
     
     def set_new_stat_pitcher(self, stat, val, player):
+        """Route chosen stat to the matching pitcher setter on the player instance."""
         match stat:
             case 'wins':
                 player.set_wins(val)
@@ -190,6 +196,7 @@ class UpdatePitchingDialog(QDialog):
                 player.set_p_so(val)
 
     def reformat_stack_stat(self, stat):
+        """Map human-readable stat label to the internal attribute name used in stack."""
         match stat:
             case 'wins':
                 return 'wins'
@@ -227,6 +234,7 @@ class UpdatePitchingDialog(QDialog):
                 return 'p_so'
 
     def update_stats(self):
+        """Validate selection and value, update pitcher stats, and push to the undo stack."""
         stat = None
         val = None
 

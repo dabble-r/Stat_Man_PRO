@@ -340,6 +340,7 @@ class Save():
     con.commit()
 
   def save_league(self):
+    """Upsert league row by leagueID; update admin fields if league already exists."""
     def keep_attrs(obj, flag=1):
       attrs = dir(obj)
       keep_1 = ['leagueID', 'admin']
@@ -439,6 +440,7 @@ class Save():
     return False
 
   def save_team(self):
+    """Persist teams to DB: insert missing teams and update existing by teamID."""
     print("save_team - Starting...")
     def keep_attrs(obj):
       keep = ['teamID', 'name', 'leagueID', 'league', 'logo', 'manager', 'players', 'lineup', 'positions', 'wins', 'losses', 'games_played', 'wl_avg', 'bat_avg', 'team_era', 'max_roster']
@@ -639,6 +641,7 @@ class Save():
     con.commit()
      
   def save_player(self):
+    """Persist players (and pitchers) to DB: upsert by playerID; keep roster in sync."""
     print("save_player - Starting...")
     def keep_attrs_player(obj):
       keep = ['playerID', 'name', 'leagueID', 'teamID', 'number', 'team', 'positions', 'pa', 'at_bat', 'fielder_choice', 'hit', 'bb', 'hbp', 'so', 'hr', 'rbi', 'runs', 'singles', 'doubles', 'triples', 'sac_fly', 'OBP', 'BABIP', 'SLG', 'AVG', 'ISO', 'image']
@@ -804,6 +807,7 @@ class Save():
     con.close()
 
   def update_player(self, con, cur, player_obj, keep_func):
+    """Update existing player row fields (excluding playerID) using provided attribute filter."""
     #print('update player:', player_obj.name)
     dir_list = keep_func(player_obj)
     team_name = player_obj.name 
@@ -860,6 +864,7 @@ class Save():
     con.commit()
 
   def update_pitcher(self, con, cur, player_obj, keep_func):
+    """Update existing pitcher row fields (excluding playerID) using provided attribute filter."""
     #print('update player/pitcher:', player_obj.name)
     dir_list = keep_func(player_obj)
     team_name = player_obj.name 
@@ -917,6 +922,7 @@ class Save():
     con.commit()
      
   def update_team_roster(self, con, cur, roster, teamID):
+    """Write team's roster (names) to DB for teamID; keeps DB in step with memory."""
     res = cur.execute("SELECT teamID FROM team")
     ret = res.fetchall()
     roster_JSON = json.dumps([x.name for x in roster])
@@ -1035,6 +1041,7 @@ class Save():
   # ------------------------------------------------------------------------------------------------- #
   # currently in use
   def save_master(self, db_path, csv_path):
+    """Top-level save: ensure schema, upsert league/team/player, then export CSV if requested."""
     print("\n" + "="*60)
     print("save_master - STARTING")
     print(f"  db_path parameter: {db_path}")
@@ -1210,6 +1217,7 @@ class Save():
 
 
 def db_exists(db_path):
+    """Return (con, cur) if SQLite DB exists at path; otherwise return None."""
     db_path = Path(db_path)
     db_uri = f"file:{db_path}?mode=rw"
     try:
@@ -1221,6 +1229,7 @@ def db_exists(db_path):
         return None
 
 def open_db(db_path):
+    """Open (or create directory then open) SQLite DB at path and return (con, cur)."""
     result = db_exists(db_path)
     if result:
         return result  # con, cur
@@ -1239,6 +1248,7 @@ def open_db(db_path):
     return con, cur
 
 def init_league(db_path, league):
+      """Create league table if missing and insert initial league admin row."""
       con, cur = open_db(db_path)
       
       # Create league table
@@ -1286,6 +1296,7 @@ def init_league(db_path, league):
     # call init league
 
 def init_team(db_path):
+      """Create team table and supporting index if missing; no row insert here."""
       con, cur = open_db(db_path)
 
       # Create team table
@@ -1321,6 +1332,7 @@ def init_team(db_path):
     # call init team
 
 def init_player(db_path):
+      """Create player table and unique index if missing; schema includes derived stats."""
       con, cur = open_db(db_path)
       
       # Create player table
@@ -1367,6 +1379,7 @@ def init_player(db_path):
       con.close()
 
 def init_pitcher(db_path):
+      """Create pitcher table and unique index if missing; schema stores pitching stats."""
       # Create pitcher table
       con, cur = open_db(db_path)
       cur.execute("""
@@ -1414,6 +1427,7 @@ def init_pitcher(db_path):
       con.close()
 
 def init_new_db(db_path, league):
+  """Initialize a fresh DB schema (league/team/player/pitcher) with initial league row."""
   # Enable foreign key constraints
   con, cur = open_db(db_path)
   cur.execute("PRAGMA foreign_keys = ON")

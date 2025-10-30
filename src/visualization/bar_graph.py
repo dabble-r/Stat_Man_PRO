@@ -24,6 +24,7 @@ import sys
 
 class BarGraphWithDualAxes(QMainWindow):
     def __init__(self, data_bar=None, data_line=None):
+        """Window rendering bar stats with a secondary AVG line on dual Y axes."""
         super().__init__()
         self.setWindowTitle("Team Stats with Batting Average")
         self.data_bar = data_bar 
@@ -84,6 +85,7 @@ class BarGraphWithDualAxes(QMainWindow):
         self.chart.legend().setAlignment(Qt.AlignBottom)
 
     def set_y1_range(self):
+        """Compute left-axis max from bar sets with a small headroom for readability."""
         lst = dir(self)
         max = 0
         for el in lst:
@@ -102,6 +104,7 @@ class BarGraphWithDualAxes(QMainWindow):
         return round(ret)
   
     def create_barset(self):
+      """Build bar sets (and append AVG) from provided team data when one team selected."""
       # self._bar_series.append(team1)
       # list of tuples - team number and 
       bar_series = getattr(self, '_bar_series')

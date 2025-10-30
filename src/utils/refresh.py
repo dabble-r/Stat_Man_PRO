@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QApplication, QLabel, QSizePolicy, QWidget, QTree
 
 class Refresh():
   def __init__(self, league, lv_teams, lv_players, leaderboard):
+    """Helper to reconcile GUI tree views with the current league state."""
     self.lv_teams = lv_teams 
     self.lv_players = lv_players 
     self.leaderboard = leaderboard 
@@ -20,6 +21,7 @@ class Refresh():
     self.teams_avg = self.lv_teams.tree2_bottom
 
   def restore_all(self):
+    """Rebuild players/teams/leaderboard views from league aggregates and stats."""
     wl = self.league.get_all_wl() 
     avg = self.league.get_all_avg()
     players_league = self.league.get_all_players_num()
@@ -46,6 +48,7 @@ class Refresh():
     self.leaderboard.restore_items()
   
   def get_logo(self, team):
+    """Return QIcon built from team.logo path if available; None on failure."""
     logo = None
     find_team = self.league.find_team(team)
     if find_team and find_team.logo:
@@ -60,6 +63,7 @@ class Refresh():
     return logo
 
   def restore_view(self, lst, view, widget, num):
+    """Insert missing rows into a QTreeWidget based on target list snapshot."""
     ##print('player league:', players_league)
     for el in lst: # item name only
       ##print('view el:', el)
@@ -86,6 +90,7 @@ class Refresh():
           
 
   def get_widget_view(self, tree_widget, num):
+    """Return a list of row tuples read from a QTreeWidget (2 or 3 columns)."""
     ret = []
     count = tree_widget.topLevelItemCount()
     i = 0 

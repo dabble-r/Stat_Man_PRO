@@ -23,6 +23,7 @@ from src.utils.image import Icon
 
 class Ui_NewPlayer(QWidget, object):
     def __init__(self, league_view, leaderboard, league, file_dir, message, parent=None):
+        """Form/dialog to create a new player and assign positions, team, and image."""
         super().__init__()
         self.league_view_players = league_view
         self.leaderboard = leaderboard
@@ -38,6 +39,7 @@ class Ui_NewPlayer(QWidget, object):
        
     
     def setupUi(self, AddPlayer):
+        """Build the New Player UI and wire handlers/validators for inputs and checks."""
         AddPlayer.setWindowTitle("New Player Form")
         AddPlayer.resize(650, 450)
         

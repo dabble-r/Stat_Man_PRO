@@ -10,6 +10,7 @@ import random
 
 class UpdateOffenseDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, styles, message, parent=None):
+        """Offense stat updater dialog; applies validated deltas to a selected player."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -68,22 +69,11 @@ class UpdateOffenseDialog(QDialog):
         self.radio_group = QButtonGroup(self)
         self.radio_buttons = []
 
-        #options = ["default"]
-
-        #options = ["at bat", "hit", "bb", "so", "hr", "rbi", "runs", "singles", "doubles", "triples", "sac fly"]
-
+        
         self.radio_buttons_layout = QVBoxLayout()
         self.radio_buttons_layout.setAlignment(Qt.AlignTop)
 
-        '''for i in range(len(options)):
-            radio = QRadioButton(f"{options[i]}")
-            if options[i] == 'at bat':
-                radio.setChecked(True) 
-            else:
-                radio.setEnabled(False)
-            self.radio_group.addButton(radio, i)
-            self.radio_buttons.append(radio)
-            self.radio_buttons_layout.addWidget(radio)'''
+        
         
         self.radio_btns_setup()
 
@@ -97,8 +87,7 @@ class UpdateOffenseDialog(QDialog):
         self.stat_widget.setWindowTitle(f"Stats")
         self.stat_widget.setModal(True)
         self.stat_layout = QVBoxLayout(self.stat_widget)
-        #self.stat_ui = Ui_StatDialog(self.league, self.message, self.selected, self.stat_widget)
-        #self.stat_widget.setStyleSheet(self.styles.main_styles)
+        
 
                                 # ---------------------------------------------------------------------------------------------------------------------#
 
@@ -125,6 +114,7 @@ class UpdateOffenseDialog(QDialog):
     # check for existing stats
     # enable/disable radio btns according to existing stats
     def radio_btns_stat_check(self):
+        """Enable radios if selected player already has at-bats; otherwise keep minimal set."""
         player, team, num = self.selected
         find_team = self.league.find_team(team)
         if find_team:
@@ -140,6 +130,7 @@ class UpdateOffenseDialog(QDialog):
                     self.enable_buttons()
     
     def radio_btns_setup(self):
+        """Create and configure offense radio buttons for supported stat updates."""
         options = ["default"]
         options = ["hit", "bb", "hbp", "so", "hr", "rbi", "runs", "singles", "doubles", "triples", "sac fly", "fielder's choice"]
 
@@ -155,15 +146,18 @@ class UpdateOffenseDialog(QDialog):
         self.radio_btns_stat_check()
 
     def enable_buttons(self):
+        """Enable all radio buttons after a prerequisite stat exists (e.g., hits/AB present)."""
         for el in self.radio_buttons:
             el.setEnabled(True)
 
     def get_player_stat(self):
+        """Return the currently selected radio stat label (as displayed)."""
         # radio button selection 
         selection = self.radio_group.checkedButton().text()
         return selection
     
     def set_new_stat_player(self, stat, val, player):
+        """Route chosen offense stat to the matching setter on the player instance."""
         
         match stat:
             case 'hit':
@@ -193,6 +187,7 @@ class UpdateOffenseDialog(QDialog):
                 player.set_fielder_choice(val)
 
     def update_stats(self):
+        """Validate selection and value, update offense stats, and push to the undo stack."""
         stat = None
         val = None
 
@@ -248,13 +243,6 @@ class UpdateOffenseDialog(QDialog):
         ##print("stat:", stat)
         #print('before:', find_player, "\n")
 
-        '''if stat == 'sac fly' or stat == 'at bat':
-            stat = stat.replace(" ", "_")
-        elif stat == 'plate appearance':
-            stat = 'pa'
-        elif stat == "fielder's choice":
-            stat = "fielder_choice"'''
-
         # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
         # stat hierarchy:  
             # radio buttons options 
@@ -266,8 +254,7 @@ class UpdateOffenseDialog(QDialog):
         statType = stat[-1] if type(stat) == list else stat
         
 
-        # add to stack node 
-        # player obj, team obj, stat list (pa or ab and stat), curr attr/state of stat, bound method called, player string flag
+        
         self.stack.add_node(find_player, team, stat, getattr(find_player, statType), self.set_new_stat_player, 'player')
 
         #print('set new stat:', stat)

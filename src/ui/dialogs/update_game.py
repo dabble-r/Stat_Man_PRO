@@ -9,6 +9,7 @@ import random
 
 class UpdateGameDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, parent=None):
+        """Skeleton dialog for future per-game updates (opponent, date, lineup, score)."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -115,6 +116,7 @@ class UpdateGameDialog(QDialog):
         
 
     def get_team_bat_order(self):
+        """Return selected batting order label or None if none selected."""
         # radio button selection 
         selection = self.radio_group.checkedButton()
         if selection is None:
@@ -122,6 +124,7 @@ class UpdateGameDialog(QDialog):
         return selection.text()    
 
     def render_input_form(self):
+        """Toggle custom order input visibility based on radio selection."""
         text = self.radio_group.checkedButton().text()
         if text == 'custom':
             self.custom_order_input.show()
@@ -129,6 +132,7 @@ class UpdateGameDialog(QDialog):
             self.custom_order_input.hide()
 
     def set_lineup_team(self, order, player, team):
+        """Apply lineup slot selection to team via team.set_lineup mapping."""
         '''"1-Leadoff", "Second", "3-Three Hole", "4-Cleanup", "5", "6", "7", "8", "9"'''
         match order:
             case 'Leadoff':

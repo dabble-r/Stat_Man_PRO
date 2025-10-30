@@ -43,7 +43,7 @@ class LeagueViewPlayers(QWidget):
         self.setObjectName("league view players - top")
         self.selected = selected
         self.styles = styles
-        #self.setStyleSheet(self.styles.modern_styles)
+        
         self.undo = undo
         self.file_dir = file_dir
         self.db_path = f"{self.file_dir}/DB"
@@ -70,9 +70,7 @@ class LeagueViewPlayers(QWidget):
 
         self.league_view_teams = league_view
 
-        #self.new_team_ui = Ui_NewTeam(self.league_view_teams.tree1_bottom, self.league_view_teams.tree2_bottom, self.league, self.file_dir, self.styles, self.message, parent=self.parent)
-        #self.new_team_widget = QDialog(self.parent)
-        #self.new_team_widget.setStyleSheet(self.styles.modern_styles)
+        
 
         self.tree1_top.setColumnCount(3)
         self.tree1_top.setHeaderLabels(["Player", "Team", "Number"])
@@ -81,11 +79,7 @@ class LeagueViewPlayers(QWidget):
         header1 = self.tree1_top.header()
         header1.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
-        # new player UI 
-        # initialize new dialog for each add player click
-        #self.new_player_ui = Ui_NewPlayer(self.tree1_top, self.leaderboard, self.league)
-        #self.new_player_widget = QDialog(self)
-        #self.new_player_widget.setStyleSheet(self.styles.main_styles)
+        
 
         # Top layout containing two tree widgets
         self.top_layout = QHBoxLayout()
@@ -129,9 +123,8 @@ class LeagueViewPlayers(QWidget):
         self.button_group.setLayout(self.button_layout_top)
 
         # use layouts from league view players individually to customize main view
-        #self.top_layout.addWidget(self.button_group)
+        
     
-    # deprecated
     
     def open_new_player_dialog(self):
         self.new_player_widget = QDialog(self.parent)
@@ -180,6 +173,7 @@ class LeagueViewPlayers(QWidget):
         pass
 
     def save_csv(self):
+        """Open the save flow and export current league/DB snapshot to CSV folder."""
         print('saving to csv to local device')
         self.save_widget = QDialog(self.parent)
         self.save_widget.setWindowTitle("Save Progress")
@@ -194,14 +188,9 @@ class LeagueViewPlayers(QWidget):
         save_ui.run()
         
     def load_csv(self):
+        """Prompt for a CSV folder and execute load workflow into DB, league, and GUI."""
         print('loading csv to DB')
-        '''self.load_widget = QDialog(self.parent)
-        self.load_widget.setWindowTitle("Load Progress")
-        self.load_widget.setModal(True)
-        # Just instantiate and call setupUi once
-        self.load_ui = Ui_LoadDialog(self.league, self.message, self.file_dir, self.load_widget)
-        self.load_ui.setupUi(self.load_widget)
-        self.load_widget.exec()'''
+        
         file = FileDialog(self.message, parent=self.parent, flag="load")
         csv_path = file.open_file_dialog()
         if not csv_path:

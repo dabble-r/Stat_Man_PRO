@@ -25,6 +25,7 @@ from src.utils.file_dialog import FileDialog
 
 class MainWindow(QWidget):
     def __init__(self, app):
+        """Main application window wiring league, views, dialogs, and event filters."""
         super().__init__()
         self.selected = None
         self.league = LinkedList()

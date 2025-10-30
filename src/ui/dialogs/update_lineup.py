@@ -8,6 +8,7 @@ import random
 
 class UpdateLineupDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, parent=None):
+        """Dialog to assign batting order slots to a named player on the team."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -105,6 +106,7 @@ class UpdateLineupDialog(QDialog):
         self.setLayout(main_layout)
 
     def get_team_bat_order(self):
+        """Return selected lineup slot label or None if nothing selected."""
         # radio button selection 
         selection = self.radio_group.checkedButton()
         if selection is None:
@@ -112,6 +114,7 @@ class UpdateLineupDialog(QDialog):
         return selection.text()    
 
     def render_input_form(self):
+        """Toggle custom order input when 'custom' slot is selected."""
         text = self.radio_group.checkedButton().text()
         if text == 'custom':
             self.custom_order_input.show()
@@ -119,6 +122,7 @@ class UpdateLineupDialog(QDialog):
             self.custom_order_input.hide()
 
     def set_lineup_team(self, order, player, team):
+        """Apply lineup slot to team using team.set_lineup with mapping for labels."""
         '''"1-Leadoff", "Second", "3-Three Hole", "4-Cleanup", "5", "6", "7", "8", "9"'''
         match order:
             case 'Leadoff':
@@ -144,11 +148,13 @@ class UpdateLineupDialog(QDialog):
                 team.set_lineup('lineup', cusom_input, player, self)
     
     def check_custom_input(self, input, team):
+        """Validate custom batting slot is >9 and ≤ team max roster."""
         find_team = self.league.find_team(team)
         if input <= 9 or input > find_team.get_max_roster():
             raise ValueError("Must enter a number greater than 9 and less than or equal to team max roster.")
 
     def reformat_order(self, stat):
+        """Normalize human labels to numeric slot strings used by team.lineup."""
         match stat:
             case 'Leadoff':
                 return '1'
@@ -160,6 +166,7 @@ class UpdateLineupDialog(QDialog):
                 return str(stat)
 
     def update_stats(self):
+        """Validate inputs, push undo action, and update team lineup accordingly."""
         order = self.get_team_bat_order()
         custom_input = None
         player = self.player_input.text()

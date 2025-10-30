@@ -2,6 +2,7 @@
 # to refacto as Game instance 
 # 
 class Game():
+  """Lightweight game container for lineups, positions, and basic game metadata."""
   def __init__(self, team='Team', parent=None):
     self.team = team
     self.opponent = 'Opponent'
@@ -75,6 +76,7 @@ class Game():
     self.parent = parent
 
   def __str__(self):
+    """Return a short printable summary of the current game context."""
     ret = '' 
     ret += f"Game: {self.team} vs. {self.opponent}\nScore: {self.score}\nSeason: {self.season}\nDate: {self.date}\n\n"
     return ret

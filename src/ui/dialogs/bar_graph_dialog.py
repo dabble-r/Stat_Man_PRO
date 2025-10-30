@@ -7,6 +7,7 @@ from PySide6.QtCore import QCoreApplication, Qt, QTimer
 
 class BarGraphDialog(QDialog):
     def __init__(self, league, selected, message, styles, teams, parent):
+        """Dialog to choose teams via checkboxes and trigger a bar graph render."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -64,6 +65,7 @@ class BarGraphDialog(QDialog):
         self.setLayout(main_layout)
     
     def checkbox_setup(self):
+      """Populate checkbox list from current league team names and wire selection."""
       options = ["default"]
 
       options = [x for x in self.league.get_all_team_names()]
@@ -75,6 +77,7 @@ class BarGraphDialog(QDialog):
         self.check_buttons_layout.addWidget(checkbox)
         
     def get_team_selection(self):
+      """Collect checked team names and notify parent view for graph generation."""
       # checkbox selection 
       #for el in self.teams_selected: 
           #self.parent.teams_selected.append(el)

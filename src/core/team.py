@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QMessageBox
 import math
 
 class Team():
+  """Team entity holding roster, admin fields, and computed team statistics."""
   def __init__(self, league, name, manager, message=None, max_roster=math.inf):
     self.name = name  
     self.league = league 
@@ -54,6 +55,7 @@ class Team():
     return ret
   
   def get_hash(self):
+    """Return deterministic integer hash for teamID based on team name characters."""
     def indx(a, b):
         index = a.index(b)
         if index == 0:
@@ -74,6 +76,7 @@ class Team():
   def format_decimal(self, num):        return "{:.3f}".format(num)
 
   def populate_lineup(self):
+    """Extend lineup dict with numeric slots up to max_roster as None."""
     for indx in range(10, self.max_roster+1): 
       self.lineup[str(indx)] = None
   
@@ -95,15 +98,18 @@ class Team():
         
   
   def check_graph_min(self):
+    """Return None when no games played, used to seed sample graph data."""
     if self.games_played == 0:
       return None
   
   def set_min(self):
+    """Seed minimal sample stats for graph previews (not persisted)."""
     self.games_played = 10 
     self.wins = 7 
     self.losses = 3
   
   def graph_view_format_team(self):
+        """Build graph-friendly data structure for team and individual stats."""
         sample_team = None
         '''data_test_player = [
           {
@@ -352,12 +358,16 @@ class Team():
     ##print("positions:\n", self.get_positions())
   
   def set_wl_avg(self):                 self.wl_avg = self.calc_wl_avg()
+  """Recalculate and store win-loss average as formatted string."""
 
   def set_bat_avg(self):                self.bat_avg = self.calc_bat_avg()
+  """Recalculate and store team batting average across roster."""
 
   def set_manager(self, val):           self.manager = val
+  """Set team manager name string."""
   
   def set_lineup(self, attr, stat, player, parent):      
+    """Set lineup slot 'stat' to player name with replace confirmation."""
     reply = self.ques_replace(attr, stat, parent)
     if reply == QMessageBox.StandardButton.No: 
       return
@@ -365,6 +375,7 @@ class Team():
     ##print("positions:\n", self.get_positions())
   
   def set_games_played(self, val, parent):
+    """Increment games_played by val if positive integer; show message otherwise."""
     if self.less_zero(self.games_played, val):
       return
     if isinstance(val, int):
@@ -374,6 +385,7 @@ class Team():
     self.message.show_message("Enter a value greater than zero.")
   
   def set_wins(self, val, parent):
+    """Increment wins with guard that wins+losses ≤ games_played."""
     if self.less_zero(self.wins, val):
       return
     if self.games_played > 0: 
@@ -384,6 +396,7 @@ class Team():
     self.message.show_message(f"Wins-Losses cannot exceed games played\n\n          W:{self.wins} L:{self.losses} G:{self.games_played}.")
   
   def set_losses(self, val, parent):
+    """Increment losses with guard that wins+losses ≤ games_played."""
     if self.less_zero(self.losses, val):
       return
     if self.games_played > 0:
@@ -394,6 +407,7 @@ class Team():
     self.message.show_message(f"Wins-Losses cannot exceed games played\n\n          W:{self.wins} L:{self.losses} G:{self.games_played}.")
   
   def set_team_era(self):
+    """Recalculate and store team ERA from pitchers on roster."""
     self.team_era = self.calc_team_era()
 
 # -------------------------------------------------------------------------- # 
@@ -428,6 +442,7 @@ class Team():
 # modify team
 
   def add_player(self, new_player):
+    """Append player to roster if capacity allows; ignore otherwise."""
     if len(self.players) < int(self.max_roster):
       self.players.append(new_player)
     else:
@@ -435,6 +450,7 @@ class Team():
       return
 
   def remove_player(self, player):
+    """Remove first player matching name from roster and return updated list."""
     indx = None
     for i in range(len(self.players)):
       if self.players[i].name == player:

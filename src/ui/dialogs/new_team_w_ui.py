@@ -25,6 +25,7 @@ import random
 
 class Ui_NewTeam(QWidget, object):
     def __init__(self, league_view_WL, league_view_AVG, league, file_dir, styles, message, parent=None):
+        """Form/dialog to create a new team, set name/logo, and add to league views."""
         super().__init__(parent)
         self.league_view_WL = league_view_WL
         self.league_view_AVG = league_view_AVG
@@ -37,6 +38,7 @@ class Ui_NewTeam(QWidget, object):
         self.parent = parent
         
     def setupUi(self, AddTeam):
+        """Build the New Team UI and wire inputs for name/logo creation and submission."""
         if not AddTeam.objectName():
             AddTeam.setObjectName(u"AddTeam")
         AddTeam.resize(500, 450)

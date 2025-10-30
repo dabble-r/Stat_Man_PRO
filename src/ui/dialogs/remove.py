@@ -8,6 +8,7 @@ import random
 
 class RemoveDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, lv_players, parent=None):
+        """Dialog to remove a selected team/player from current view or entire league."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -58,10 +59,12 @@ class RemoveDialog(QDialog):
         self.setLayout(main_layout)
 
     def get_radio_selection(self):
+        """Return radio selection label determining removal scope (League/Current View)."""
         selection = self.radio_group.checkedButton().text()
         return selection
 
     def remove_current_view(self):
+        """Remove the selected item from visible views only, keeping league data intact."""
         #print('current view') 
 
         if LinkedList.COUNT == 0:
@@ -90,6 +93,7 @@ class RemoveDialog(QDialog):
         #print('league after:', self.league)
     
     def remove_league(self):
+        """Remove the selected team or player from the league after confirmation."""
         #print('league before:', self.league)
 
         if LinkedList.COUNT == 0:

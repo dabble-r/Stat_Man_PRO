@@ -10,6 +10,7 @@ import random
 
 class UpdateAdminDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, parent=None):
+        """Management dialog to edit team manager, lineup, positions, and roster size."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -99,11 +100,13 @@ class UpdateAdminDialog(QDialog):
         self.setLayout(self.main_layout)
 
     def get_team_stat(self):
+        """Return selected admin stat label from radio buttons."""
         # radio button selection 
         selection = self.radio_group.checkedButton().text()
         return selection
     
     def render_input_form(self):
+        """Show/hide input field and validators based on selected admin option."""
         text = self.radio_group.checkedButton().text()
         if text == "lineup" or text == "positions":
             self.form_widget.hide()
@@ -116,6 +119,7 @@ class UpdateAdminDialog(QDialog):
         
            
     def set_new_stat_team(self, stat, input, team):
+        """Apply admin change to team: manager/lineup/positions/max_roster with validation."""
         val = None
         match stat:
             case 'manager':
@@ -137,16 +141,19 @@ class UpdateAdminDialog(QDialog):
                 
 
     def update_lineup_handler(self):
+        """Open lineup dialog to adjust batting order for the current team."""
         ##print('lineup handler called')
         dialog = UpdateLineupDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.message, parent=self)
         dialog.exec()
     
     def update_positions_handler(self):
+        """Open positions dialog to assign field positions for the current team."""
         ##print('positions handler called')
         dialog = UpdatePositionsDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.message, parent=self)
         dialog.exec()
     
     def update_stats(self):
+        """Validate selection/value and update the chosen admin stat or open sub-dialogs."""
         stat = None
         input = None
         team, num = self.selected

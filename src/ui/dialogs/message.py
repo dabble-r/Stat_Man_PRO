@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 
 class Message_1(QDialog):
   def __init__(self, styles, parent=None):
+    """Simple message box wrapper for OK-only notifications with autosizing."""
     self.parent = parent
     self.box = QMessageBox(parent=self.parent)
     self.styles = styles
@@ -19,9 +20,11 @@ class Message_1(QDialog):
     self.choice = None
 
   def set_box_text(self, text):
+    """Set message text on the internal QMessageBox."""
     self.box.setText(text)
 
   def show_message(self, text):
+    """Show message modally after adjusting box size to content."""
     self.set_box_text(text)
     self._resize_to_fit_text(text)
 
@@ -32,6 +35,7 @@ class Message_1(QDialog):
     self.box.exec()
   
   def _resize_to_fit_text(self, text):
+        """Compute and set a minimum dialog size based on text metrics."""
         # Use font metrics to calculate text size
         font_metrics = QFontMetrics(self.box.font())
         text_width = font_metrics.horizontalAdvance(text)
@@ -51,6 +55,7 @@ class Message_1(QDialog):
 
 class Message(QDialog):
     def __init__(self, styles=None, parent=None):
+        """Flexible message dialog returning 'ok'/'no'/'cancel' per user choice."""
         super().__init__(parent)
         self.styles = styles
         self.setWindowTitle("Update Message")

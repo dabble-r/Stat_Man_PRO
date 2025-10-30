@@ -8,6 +8,7 @@ import random
 
 class UpdatePositionsDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, parent=None):
+        """Dialog to assign field positions to a named player on the selected team."""
         super().__init__(parent)
         self.league = league
         self.selected = selected
@@ -98,11 +99,13 @@ class UpdatePositionsDialog(QDialog):
         self.setLayout(main_layout)
 
     def get_team_pos(self):
+        """Return selected position label from radio buttons."""
         # radio button selection 
         selection = self.radio_group.checkedButton().text()
         return selection        
 
     def set_positions_team(self, pos, player, team):
+        """Apply the given position to team using team.set_pos with confirmation prompts."""
         '''"pitcher", "catcher", "first base", "second base", "third base", "shortstop", "left field", "center field", "right field"'''
         match pos:
             case 'pitcher':
@@ -125,6 +128,7 @@ class UpdatePositionsDialog(QDialog):
                 team.set_pos('positions', pos, player, self)
 
     def update_stats(self):
+        """Validate inputs, push to undo stack, and update team position assignment."""
         pos = self.get_team_pos()
         player = self.player_input.text()
         team, avg = self.selected
