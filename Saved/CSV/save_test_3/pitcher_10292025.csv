@@ -1,2 +1,0 @@
-playerID,leagueID,teamID,name,wins,losses,era,games_played,games_started,games_completed,shutouts,saves,save_ops,ip,p_at_bats,p_hits,p_runs,er,p_hr,p_hb,p_bb,p_so,WHIP,p_AVG,k_9,bb_9
-4859,1325,795,test Player,0,0,0.0,0,0,0,0,0,0,0.0,0,0,0,0,0,0,0,0,0.0,0.0,0.0,0.0

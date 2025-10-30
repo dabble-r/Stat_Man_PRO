@@ -4,6 +4,15 @@ __pycache__/
 *$py.class
 *.so
 .Python
+RESTRUCTURING_GUIDE.md
+RESTRUCTURING_SUMMARY.md
+REMOVED_FOLDERS.txt
+CLEANUP_COMPLETE.md
+BEFORE_AFTER.md
+update_imports.py
+verify_structure.py
+to_do.txt
+
 
 # Virtual Environment
 myenv/
