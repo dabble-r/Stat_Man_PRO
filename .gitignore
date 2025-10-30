@@ -15,9 +15,8 @@ ICON_FIX.md
 update_imports.py
 verify_structure.py
 to_do.txt
-archive/demo/*
-docs/* 
-Documentation/*
+archive/
+Documentation/
 
 # Virtual Environment
 myenv/
