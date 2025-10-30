@@ -22,6 +22,13 @@ from src.ui.dialogs.stat_dialog_ui import Ui_StatDialog
 from src.utils.image import Icon
 import random
 
+# New: logic helpers for view text and logo path
+from src.ui.logic.views.league_view_teams_logic import (
+    team_wl_text,
+    team_avg_text,
+    team_logo_path,
+)
+
 
 class LeagueViewTeams(QWidget):
     def __init__(self, league, styles, stack, file_dir, message, parent=None):
@@ -104,7 +111,7 @@ class LeagueViewTeams(QWidget):
         """Update W-L tree item for team and refresh its icon if present."""
         count = self.tree1_bottom.topLevelItemCount()
         name_target = target.name
-        wl_avg_upd = target.get_wl_avg()
+        wl_avg_upd = team_wl_text(target)
         i = 0
         while i < count:
             item = self.tree1_bottom.topLevelItem(i)
@@ -115,10 +122,10 @@ class LeagueViewTeams(QWidget):
                 ###print("team match:", team, wl_avg)
                 item.setText(1, wl_avg_upd)
                 # Convert string path to QIcon for display
-                if target.logo:
-                    from src.utils.image import Icon
+                logo_path = team_logo_path(target)
+                if logo_path:
                     try:
-                        icon_obj = Icon(target.logo)
+                        icon_obj = Icon(logo_path)
                         logo_icon = icon_obj.create_icon()
                         if logo_icon:
                             item.setIcon(0, logo_icon)
@@ -130,7 +137,7 @@ class LeagueViewTeams(QWidget):
         """Update AVG tree item for team and refresh its icon if present."""
         count = self.tree2_bottom.topLevelItemCount()
         name_target = target.name
-        bat_avg_upd = target.get_bat_avg()
+        bat_avg_upd = team_avg_text(target)
         i = 0
         while i < count:
             item = self.tree2_bottom.topLevelItem(i)
@@ -141,10 +148,10 @@ class LeagueViewTeams(QWidget):
                 ###print("team match:", team, wl_avg)
                 item.setText(1, bat_avg_upd)
                 # Convert string path to QIcon for display
-                if target.logo:
-                    from src.utils.image import Icon
+                logo_path = team_logo_path(target)
+                if logo_path:
                     try:
-                        icon_obj = Icon(target.logo)
+                        icon_obj = Icon(logo_path)
                         logo_icon = icon_obj.create_icon()
                         if logo_icon:
                             item.setIcon(0, logo_icon)

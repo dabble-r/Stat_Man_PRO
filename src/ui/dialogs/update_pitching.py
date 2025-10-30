@@ -5,6 +5,13 @@ from src.ui.views.league_view_teams import LeagueViewTeams
 
 from src.ui.styles.stylesheets import StyleSheets
 from src.ui.dialogs.stat_dialog_ui import Ui_StatDialog
+from src.ui.logic.dialogs.update_pitching_logic import (
+    check_games_played_for_enablement,
+    normalize_pitcher_numeric_fields,
+    apply_pitching_update,
+    build_pitching_undo_payload,
+    refresh_pitcher_derived_stats,
+)
 import random
 
 class UpdatePitchingDialog(QDialog):
@@ -124,9 +131,7 @@ class UpdatePitchingDialog(QDialog):
         if find_team:
             find_player = find_team.get_player(player)
             if find_player:
-                games_played = find_player.games_played 
-                if games_played > 0:
-                    #print('stats exist')
+                if check_games_played_for_enablement(find_player.games_played):
                     self.enable_buttons()
     
     def radio_btns_setup(self):
@@ -158,80 +163,13 @@ class UpdatePitchingDialog(QDialog):
     
     def set_new_stat_pitcher(self, stat, val, player):
         """Route chosen stat to the matching pitcher setter on the player instance."""
-        match stat:
-            case 'wins':
-                player.set_wins(val)
-            case 'losses':
-                player.set_losses(val)
-            case 'games started':
-                player.set_games_started(val) 
-            case 'games completed':
-                player.set_games_completed(val)
-            case 'games played':
-                player.set_games_played(val)
-                self.enable_buttons()
-            case 'shutouts':
-                player.set_shutouts(val) 
-            case 'saves':
-                player.set_saves(val) 
-            case 'save opportunities':
-                player.set_save_ops(val) 
-            case 'at bats':
-                player.set_p_at_bats(val)
-            case 'IP':
-                player.set_ip(val) 
-            case 'hits':
-                player.set_p_hits(val) 
-            case 'runs':
-                player.set_p_runs(val) 
-            case 'ER':
-                player.set_er(val) 
-            case 'HR':
-                player.set_p_hr(val)
-            case 'HB':
-                player.set_p_hb(val) 
-            case 'walks':
-                player.set_p_bb(val) 
-            case 'SO':
-                player.set_p_so(val)
+        apply_pitching_update(player, stat, val)
+        if stat == 'games played':
+            self.enable_buttons()
 
     def reformat_stack_stat(self, stat):
         """Map human-readable stat label to the internal attribute name used in stack."""
-        match stat:
-            case 'wins':
-                return 'wins'
-            case 'losses':
-                return 'losses'
-            case 'games started':
-                return 'games_started' 
-            case 'games completed':
-                return 'games_completed' 
-            case 'games played':
-                return 'games_played'
-            case 'shutouts':
-                return 'shutouts' 
-            case 'saves':
-                return 'saves'
-            case 'save opportunities':
-                return 'save_ops'
-            case 'at bats':
-                return 'p_at_bats'
-            case 'IP':
-                return 'ip' 
-            case 'hits':
-                return 'p_hits'
-            case 'runs':
-                return 'p_runs' 
-            case 'ER':
-                return 'er'
-            case 'HR':
-                return 'p_hr'
-            case 'HB':
-                return 'p_hb' 
-            case 'walks':
-                return 'p_bb' 
-            case 'SO':
-                return 'p_so'
+        return build_pitching_undo_payload(stat)
 
     def update_stats(self):
         """Validate selection and value, update pitcher stats, and push to the undo stack."""
@@ -252,24 +190,21 @@ class UpdatePitchingDialog(QDialog):
 
         player, team, num = self.selected
         find_team = self.league.find_team(team)
+        if not find_team:
+            self.message.show_message("Team not found.")
+            return
         find_player = find_team.get_player(player)
-        
-        ###print(stat, val, find_player)
+        if not find_player:
+            self.message.show_message("Player not found.")
+            return
 
-        ##print('before:', find_player, "\n")
+        normalize_pitcher_numeric_fields(find_player, ['games_played', 'wins', 'losses', 'games_started', 'games_completed', 'shutouts', 'saves', 'save_ops', 'ip', 'p_at_bats', 'p_hits', 'p_runs', 'er', 'p_hr', 'p_hb', 'p_bb', 'p_so'])
+
         stat_stack = self.reformat_stack_stat(stat)
-        # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
-        # stat hierarchy:  
-            # radio buttons options 
-            # radio selection 
-            # exact player attr/stat passed to stack node 
-            # stat passed to set new stat 
-            # stat updated on player instance
         self.stack.add_node(find_player, team, stat_stack, getattr(find_player, stat_stack), self.set_new_stat_pitcher, 'player')
-        ##print(self.stack)
         self.set_new_stat_pitcher(stat, val, find_player)
 
-        self.refresh_player_pitching(find_player, find_team)
+        refresh_pitcher_derived_stats(find_player, find_team)
 
         ##print('after:', find_player, "\n")
 
@@ -280,12 +215,8 @@ class UpdatePitchingDialog(QDialog):
         #self.insert_end_avg(find_team)
         
     def refresh_player_pitching(self, player, team):
-        player.set_era()
-        player.set_WHIP()
-        player.set_p_avg()
-        player.set_k_9() 
-        player.set_bb_9()
-        team.set_team_era()
+        """Legacy wrapper; now delegates to logic module."""
+        refresh_pitcher_derived_stats(player, team)
         
     # deprecated
     def rand_avg(self):
@@ -308,11 +239,11 @@ class UpdatePitchingDialog(QDialog):
         player, team, avg = self.selected
 
         find_team = self.league.find_team(team)
-        find_player = find_team.get_player(player)
-
-        self.undo.undo_exp()
-
-        self.refresh_player_pitching(find_player, find_team)
+        if find_team:
+            find_player = find_team.get_player(player)
+            if find_player:
+                self.undo.undo_exp()
+                refresh_pitcher_derived_stats(find_player, find_team)
     
     # deprecated
     def view_player_stats_1(self):

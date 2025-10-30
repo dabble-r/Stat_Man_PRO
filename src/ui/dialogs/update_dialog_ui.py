@@ -11,6 +11,13 @@ from src.utils.file_dialog import FileDialog
 from src.utils.image import Icon
 import random
 
+# New: logic helpers
+from src.ui.logic.dialogs.update_dialog_logic import (
+    player_has_pitching,
+    set_team_logo,
+    set_player_image,
+)
+
 class UpdateDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, file_dir, styles, message, parent=None):
         """Hub dialog for updating players/teams (offense, pitching, admin, team stats)."""
@@ -109,9 +116,8 @@ class UpdateDialog(QDialog):
         player, team, avg = self.selected
         find_team = self.league.find_team(team)
         find_player = find_team.get_player(player)
-        if "pitcher" not in find_player.positions:
+        if not player_has_pitching(getattr(find_player, 'positions', [])):
             self.message.show_message("Player has no pitching position.")
-            #QMessageBox.warning(self, "Input Error", "Player has no pitching position.")
         else:
             dialog = UpdatePitchingDialog(self.league, self.selected, self.leaderboard, self.lv_teams, self.stack, self.undo, self.message, parent=self)
             dialog.exec()
@@ -128,18 +134,10 @@ class UpdateDialog(QDialog):
     
     def upload_dialog(self):
         """Open file picker, build icon from selected path, and apply to current team/player."""
-        ##print("upload")
-        # open window to select file 
-        # set a file path to file selected 
-        # call Icon method to create icon 
-        # set team icon to icon object 
-        # set icon to stat and update dialogs ? 
         dialog = FileDialog(self.message, parent=self, flag='save')
         dialog.open_file_dialog()
         file_path = dialog.get_file_path()
-        ##print('file path:', file_path)
         icon = self.get_icon(file_path)
-        # test func 
         if len(self.selected) == 2 and icon is not None:
             self.change_logo(icon)
         return icon, file_path
@@ -157,13 +155,9 @@ class UpdateDialog(QDialog):
             try:
                 icon, file_path = self.upload_dialog()
                 find_team = self.league.find_team(team)
-                find_team.logo = file_path  
-                #print(icon, file_path)
-                #print('team logo: ', find_team.logo)
+                set_team_logo(find_team, file_path)
                 self.message.show_message("Team logo successfully updated!")
-            
             except Exception as e:
-                #print(f'error: new team logo not created!\n{e}')
                 self.message.show_message(f"Error uploading logo!")
 
         elif len(self.selected) == 3: 
@@ -173,13 +167,9 @@ class UpdateDialog(QDialog):
                 icon, file_path = self.upload_dialog()
                 find_team = self.league.find_team(team)
                 find_player = find_team.get_player(player)
-                find_player.image = file_path  
-                #print(icon, file_path)
-                #print('team logo: ', find_team.logo)
+                set_player_image(find_player, file_path)
                 self.message.show_message("Player image successfully updated!")
-            
             except Exception as e:
-                #print(f'error: new team logo not created!\n{e}')
                 self.message.show_message(f"Error uploading image!")
         
         return
@@ -193,8 +183,6 @@ class UpdateDialog(QDialog):
 
         curr_1 = self.lv_teams.tree1_bottom.currentItem()
         curr_2 = self.lv_teams.tree2_bottom.currentItem()
-        ##print('curr 1 selected', curr_1)
-        ##print('curr 2 selected', curr_2)
         
         if curr_1:
             curr_1.setIcon(0, new_logo)
@@ -217,4 +205,4 @@ class UpdateDialog(QDialog):
             
                         #----------------------------------------------------------------------------------------------------------------#
     
-    
+     

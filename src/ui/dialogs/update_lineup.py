@@ -6,6 +6,14 @@ from src.ui.views.league_view_teams import LeagueViewTeams
 from src.ui.styles.stylesheets import StyleSheets
 import random
 
+# New: import logic helpers
+from src.ui.logic.dialogs.update_lineup_logic import (
+  order_to_slot,
+  validate_custom_slot,
+  build_undo_payload_for_lineup,
+  apply_lineup_assignment,
+)
+
 class UpdateLineupDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, message, parent=None):
         """Dialog to assign batting order slots to a named player on the team."""
@@ -121,99 +129,39 @@ class UpdateLineupDialog(QDialog):
         else:
             self.custom_order_input.hide()
 
-    def set_lineup_team(self, order, player, team):
-        """Apply lineup slot to team using team.set_lineup with mapping for labels."""
-        '''"1-Leadoff", "Second", "3-Three Hole", "4-Cleanup", "5", "6", "7", "8", "9"'''
-        match order:
-            case 'Leadoff':
-                team.set_lineup('lineup', '1', player, self)
-            case '2':
-                team.set_lineup('lineup', '2', player, self)
-            case 'Three Hole':
-                team.set_lineup('lineup', '3', player, self)
-            case 'Cleanup':
-                team.set_lineup('lineup', '4', player, self)
-            case '5':
-                team.set_lineup('lineup', '5', player, self)
-            case '6':
-                team.set_lineup('lineup', '6', player, self)
-            case '7':
-                team.set_lineup('lineup', '7', player, self)
-            case '8':
-                team.set_lineup('lineup', '8', player, self)
-            case '9':
-                team.set_lineup('lineup', '9', player, self)
-            case "custom":
-                cusom_input = self.custom_order_input.text()
-                team.set_lineup('lineup', cusom_input, player, self)
-    
-    def check_custom_input(self, input, team):
-        """Validate custom batting slot is >9 and ≤ team max roster."""
-        find_team = self.league.find_team(team)
-        if input <= 9 or input > find_team.get_max_roster():
-            raise ValueError("Must enter a number greater than 9 and less than or equal to team max roster.")
-
-    def reformat_order(self, stat):
-        """Normalize human labels to numeric slot strings used by team.lineup."""
-        match stat:
-            case 'Leadoff':
-                return '1'
-            case 'Three Hole':
-                return '3'
-            case 'Cleanup':
-                return '4'
-            case _:
-                return str(stat)
-
     def update_stats(self):
         """Validate inputs, push undo action, and update team lineup accordingly."""
-        order = self.get_team_bat_order()
-        custom_input = None
+        order_label = self.get_team_bat_order()
         player = self.player_input.text()
         team, avg = self.selected
         find_team = self.league.find_team(team)
 
-        if not order or not player:
-            #QMessageBox.warning(self, "Input Error", "Enter player name and select batting order.")
+        if not order_label or not player:
             self.message.show_message("Enter player name and select batting order.")
             return 
-        
-        if order == 'custom':
-          try:
-            custom_input = self.custom_order_input.text()
 
-            if int(custom_input) > 9 and int(custom_input) <= find_team.get_max_roster():
-                ###print('team before:', find_team)
+        # Map order to slot and validate custom slot if needed
+        custom_text = self.custom_order_input.text() if order_label == 'custom' else None
+        slot = order_to_slot(order_label, custom_text)
+        if order_label == 'custom':
+            try:
+                validate_custom_slot(slot, find_team.get_max_roster())
+            except Exception as e:
+                self.message.show_message(f"Inpute Error: {e}")
+                return
 
-                # stack add node 
-                # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
-                self.stack.add_node(find_team, team, 'lineup', (custom_input, find_team.lineup[custom_input]), self.set_lineup_team, 'team')
+        # Build undo payload and push
+        undo_prev = build_undo_payload_for_lineup(find_team, slot if slot else '')
+        self.stack.add_node(find_team, team, 'lineup', undo_prev, self._apply_lineup_ui_delegate, 'team')
 
-                self.set_lineup_team(order, player, find_team)
+        # Apply lineup assignment
+        self._apply_lineup_ui_delegate(order_label, player, find_team)
 
-                ###print('team after:', find_team)
-
-            else:
-                max_roster = find_team.get_max_roster()
-                #QMessageBox.warning(self, "Input Error", f"Enter number between 9 and team max roster: {max_roster}.")
-                self.message.show_message(f"Enter number between 9 and team max roster: {max_roster}.")
-
-          except Exception as e:
-              #QMessageBox.warning(self, "Input Error", f"{e}") 
-              self.message.show_message(f"Inpute Error: {e}")
-
-        elif order != "custom":
-            ###print('team before:', find_team)
-
-            # stack add node 
-            # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
-            stack_order = self.reformat_order(order)
-
-            self.stack.add_node(find_team, team, 'lineup', (stack_order, find_team.lineup[stack_order]), self.set_lineup_team, 'team')
-
-            self.set_lineup_team(order, player, find_team)
-
-            ###print('team after:', find_team)
+    def _apply_lineup_ui_delegate(self, order_label, player, team_obj):
+        """Delegate that applies lineup from order label (kept for undo compatibility)."""
+        # Keep existing mapping semantics intact
+        slot = order_to_slot(order_label, self.custom_order_input.text() if order_label == 'custom' else None)
+        apply_lineup_assignment(team_obj, slot, player, self)
         
     def undo_stat(self):
         self.undo.undo_exp()

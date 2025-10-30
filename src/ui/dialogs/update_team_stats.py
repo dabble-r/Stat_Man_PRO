@@ -7,6 +7,10 @@ from src.ui.styles.stylesheets import StyleSheets
 from src.ui.dialogs.stat_dialog_ui import Ui_StatDialog
 from src.ui.dialogs.update_game import UpdateGameDialog
 from src.ui.views.tab_widget import TabWidget
+from src.ui.logic.dialogs.update_team_stats_logic import (
+    refresh_team_derived_stats,
+    update_leaderboard_wl_item,
+)
 import random
 
 class UpdateTeamStatsDialog(QDialog):
@@ -188,39 +192,35 @@ class UpdateTeamStatsDialog(QDialog):
 
         self.set_new_stat_team(stat, val, find_team)
 
-        self.refresh_team_stats(find_team)
+        refresh_team_derived_stats(find_team)
 
         self.refresh_leaderboard_wl(find_team)
 
         ##print('stack after:', self.stack)
     
     def refresh_team_stats(self, team):
-        team.set_wl_avg()
+        """Legacy wrapper; now delegates to logic module."""
+        refresh_team_derived_stats(team)
     
     def refresh_leaderboard_wl(self, target):
+        """Update W-L leaderboard item for the target team."""
         count = self.lv_teams.tree1_bottom.topLevelItemCount()
         team_target = target.name
         wl_upd = target.get_wl_avg()
         i = 0
         while i < count:
             item = self.lv_teams.tree1_bottom.topLevelItem(i)
-            # wl view
-            team = item.text(0)
-            wl_avg = item.text(1)
-            if team == team_target:
-                ###print("team match:", team, wl_avg)
-                item.setText(1, wl_upd)
+            if update_leaderboard_wl_item(item, team_target, wl_upd):
+                break
             i += 1
     
     def undo_stat(self):
         team, avg = self.selected
         find_team = self.league.find_team(team)
-        
-        self.undo.undo_exp()
-       
-        self.refresh_team_stats(find_team)
-        
-        self.refresh_leaderboard_wl(find_team)
+        if find_team:
+            self.undo.undo_exp()
+            refresh_team_derived_stats(find_team)
+            self.refresh_leaderboard_wl(find_team)
 
     def view_team_stats(self):
         ##print("view stats")

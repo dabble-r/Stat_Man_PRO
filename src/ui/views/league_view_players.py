@@ -36,6 +36,9 @@ from pathlib import Path
 # --- exp --- # 
 from src.data.save.save_exp import SaveCSVHandler
 
+# New: logic for simple guards
+from src.ui.logic.views.league_view_players_logic import must_have_team_before_add
+
 
 class LeagueViewPlayers(QWidget):
     def __init__(self, league_view, selected, league, styles, undo, file_dir, message, parent=None):
@@ -124,8 +127,8 @@ class LeagueViewPlayers(QWidget):
 
         # use layouts from league view players individually to customize main view
         
-    
-    
+        
+        
     def open_new_player_dialog(self):
         self.new_player_widget = QDialog(self.parent)
         self.ui = Ui_NewPlayer(self.tree1_top, self.leaderboard, self.league, self.file_dir, self.message, parent=self.new_player_widget)
@@ -136,9 +139,7 @@ class LeagueViewPlayers(QWidget):
         self.new_player_widget.exec()
 
     def new_player_handler(self):
-        if self.league.get_count() == 0:
-            ##print("No teams in league!")
-            #QMessageBox.warning(self, "Input Error", "Must create a team before adding players.")
+        if not must_have_team_before_add(self.league):
             self.message.show_message("Must create a team before adding players.")
             return
         

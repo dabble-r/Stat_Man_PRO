@@ -8,6 +8,20 @@ from src.core.node import NodeStack
 from src.ui.dialogs.stat_dialog_ui import Ui_StatDialog
 import random
 
+# New: logic helpers - imported with aliases to avoid name collision with class methods
+from src.ui.logic.dialogs.update_offense_logic import (
+    coerce_at_bat,
+    should_enable_buttons,
+    normalize_numeric_fields,
+    set_new_stat_player as logic_set_new_stat_player,
+    refresh_player as logic_refresh_player,
+    refresh_team as logic_refresh_team,
+    refresh_leaderboard_logic,
+    insert_widget as logic_insert_widget,
+    stat_lst as logic_stat_lst,
+    build_offense_undo_payload,
+)
+
 class UpdateOffenseDialog(QDialog):
     def __init__(self, league, selected, leaderboard, lv_teams, stack, undo, styles, message, parent=None):
         """Offense stat updater dialog; applies validated deltas to a selected player."""
@@ -120,12 +134,8 @@ class UpdateOffenseDialog(QDialog):
         if find_team:
             find_player = find_team.get_player(player)
             if find_player:
-                # Coerce to int to avoid type errors if at_bat was a string
-                try:
-                    at_bat = int(float(find_player.at_bat))
-                except Exception:
-                    at_bat = 0
-                if at_bat > 0:
+                at_bat = coerce_at_bat(getattr(find_player, 'at_bat', 0))
+                if should_enable_buttons(at_bat):
                     print('stats exist')
                     self.enable_buttons()
     
@@ -158,33 +168,7 @@ class UpdateOffenseDialog(QDialog):
     
     def set_new_stat_player(self, stat, val, player):
         """Route chosen offense stat to the matching setter on the player instance."""
-        
-        match stat:
-            case 'hit':
-                player.set_hit(val)
-                self.enable_buttons()
-            case 'bb':
-                player.set_bb(val)
-            case 'hbp':
-                player.set_hbp(val)
-            case 'so':
-                player.set_so(val)
-            case 'hr':
-                player.set_hr(val)
-            case 'rbi':
-                player.set_rbi(val)
-            case 'runs':
-                player.set_runs(val)
-            case 'singles':
-                player.set_singles(val)
-            case 'doubles':
-                player.set_doubles(val)
-            case 'triples':
-                player.set_triples(val)
-            case 'sac_fly':
-                player.set_sac_fly(val)
-            case "fielder's choice": 
-                player.set_fielder_choice(val)
+        logic_set_new_stat_player(stat, val, player, enable_buttons_callback=self.enable_buttons)
 
     def update_stats(self):
         """Validate selection and value, update offense stats, and push to the undo stack."""
@@ -218,30 +202,9 @@ class UpdateOffenseDialog(QDialog):
         # Normalize numeric fields on the target player to avoid string concatenation
         try:
             numeric_fields = ['pa','at_bat','fielder_choice','hit','bb','hbp','put_out','so','hr','rbi','runs','singles','doubles','triples','sac_fly']
-            for f in numeric_fields:
-                if hasattr(find_player, f):
-                    try:
-                        curr = getattr(find_player, f)
-                        if isinstance(curr, str):
-                            if curr.strip() == '':
-                                setattr(find_player, f, 0)
-                            else:
-                                # allow floats in string but store as int
-                                if '.' in curr:
-                                    setattr(find_player, f, int(float(curr)))
-                                else:
-                                    setattr(find_player, f, int(curr))
-                        elif isinstance(curr, float):
-                            setattr(find_player, f, int(curr))
-                    except Exception:
-                        pass
+            normalize_numeric_fields(find_player, numeric_fields)
         except Exception:
             pass
-
-        #print('player msg inst - update', find_player.message)
-
-        ##print("stat:", stat)
-        #print('before:', find_player, "\n")
 
         # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
         # stat hierarchy:  
@@ -250,19 +213,14 @@ class UpdateOffenseDialog(QDialog):
             # exact player attr/stat passed to stack node 
             # stat passed to set new stat 
             # stat updated on player instance
-        stat = self.stat_lst(stat, val)
-        statType = stat[-1] if type(stat) == list else stat
-        
+        stat_result = logic_stat_lst(stat, val)
+        statType = build_offense_undo_payload(stat_result)
 
-        
-        self.stack.add_node(find_player, team, stat, getattr(find_player, statType), self.set_new_stat_player, 'player')
+        self.stack.add_node(find_player, team, stat_result, getattr(find_player, statType), self.set_new_stat_player, 'player')
 
-        #print('set new stat:', stat)
         self.set_new_stat_player(statType, int(val), find_player)
 
-        self.refresh_player(find_player)
-
-        #print('after:', find_player, "\n")
+        logic_refresh_player(find_player)
 
         self.leaderboard.refresh_leaderboard(find_player)
         
@@ -271,130 +229,23 @@ class UpdateOffenseDialog(QDialog):
         self.refresh_leaderboard(find_team, self.lv_teams.tree2_bottom)
         #self.insert_end_avg(find_team)
 
-    def refresh_player(self, player):
-        player.set_AVG()
-        player.set_BABIP()
-        player.set_SLG()
-        player.set_ISO()
-        player.set_OBP()
-    
-    def refresh_team(self, team):
-        '''self.wins = 0 
-        self.losses = 0
-        self.games_played = 0
-        self.wl_avg = 0
-        self.bat_avg = 0'''
-        team.set_wl_avg()
-        team.set_bat_avg()
-    
-    def refresh_leaderboard(self, team_upd, view): # new player type -> tuple or list
-        ##print('new team:', new_team)
-        self.leaderboard_AVG = self.league.get_all_avg()
-        self.no_dups(team_upd)
-        self.add_leaderboard_list(team_upd, self.leaderboard_AVG)
-        ##print("leaderboard:", self.leaderboard_list)
-        self.sort_leaderboard(self.leaderboard_AVG)
-        self.insert_widget(view, self.leaderboard_AVG)
-    
-    # deprecated
-    def rand_avg(self):
-        rand = random.randint(100, 1000)
-        rand /= 1000 
-        rand_str = str(rand)
-        ##print('rand avg:', rand)
-        return rand_str
-
-    # deprecated
-    def rand_wl(self):
-        w = random.randint(0,100)
-        l = 100 - w
-        wl = w / 100
-        ret = (w, l, wl)
-        ##print("wl str:", wl_str, type(wl_str))
-        return str(ret)
-    
-    def no_dups(self, team):
-        for el in self.leaderboard_AVG:
-            if el[0] == team.name:
-                indx = self.leaderboard_AVG.index(el)
-                self.leaderboard_AVG.pop(indx)
-    
-    def add_leaderboard_list(self, team_upd, lst):
-        name = team_upd.name 
-        roster = team_upd.max_roster
-        avg = team_upd.get_bat_avg()
-        lst.append((name, roster, avg))
-
-    def sort_leaderboard(self, lst):
-        lst.sort(key=self.my_sort)
-        return lst
-        
-    def my_sort(self, x):
-        return x[2]
-    
-    def insert_widget(self, view, lst):
-        ##print(self.leaderboard_list, type(self.leaderboard_list))
-        view.clear()
-        #print('avg leaders:', self.leaderboard_AVG)
-        for el in lst:
-            #print("list el:", el)
-            item = QTreeWidgetItem([el[0], str(el[2])])
-            item.setTextAlignment(0, Qt.AlignCenter)
-            item.setTextAlignment(1, Qt.AlignCenter)
-            item.setTextAlignment(2, Qt.AlignCenter)
-            view.insertTopLevelItem(0, item)
-    
-    def stat_lst(self, stat, val):
-        """
-        if stat == 'sac fly' or stat == 'at bat':
-            stat = stat.replace(" ", "_")
-        elif stat == 'plate appearance':
-            stat = 'pa'
-        elif stat == "fielder's choice":
-            stat = "fielder_choice"
-        """
-        def check(str):
-            lst = ["hit", "bb", "hbp", "so", "sac fly", "fielder's choice"]
-            if str in lst:
-                return True 
-            return False
-        
-        one = ["pa"]
-        two = ["pa", "at_bat"]
-        if check(stat):
-            if stat == "hit":
-                two += [val, "hit"]
-                return two
-            elif stat == "bb":
-                one += [val, "bb"]
-                return one
-            elif stat == "hbp":
-                one += [val, "hbp"]
-                return one
-            elif stat == "so":
-                one += [val, "so"]
-                return one 
-            elif stat == "sac fly":
-                one += [val, "sac_fly"]
-                return one
-            elif stat == "fielder's choice":
-                one += [val, "fielder_choice"]
-                return one
-            
-        else:
-            return stat
+    def refresh_leaderboard(self, team_upd, view):
+        """Update leaderboard: refresh list logic and populate widget."""
+        refresh_leaderboard_logic(self.league, team_upd, self.leaderboard_AVG)
+        logic_insert_widget(view, self.leaderboard_AVG)
 
     def undo_stat(self):
+        """Execute undo operation and refresh all affected views."""
         player, team, avg = self.selected
         find_team = self.league.find_team(team)
-        find_player = find_team.get_player(player)
-
-        self.undo.undo_exp()
-
-        self.refresh_player(find_player)
-        self.refresh_team(find_team)
-        self.leaderboard.refresh_leaderboard(find_player)
-        self.refresh_leaderboard(find_team, self.lv_teams.tree2_bottom)
+        if find_team:
+            find_player = find_team.get_player(player)
+            if find_player:
+                self.undo.undo_exp()
+                logic_refresh_player(find_player)
+                logic_refresh_team(find_team)
+                self.leaderboard.refresh_leaderboard(find_player)
+                self.refresh_leaderboard(find_team, self.lv_teams.tree2_bottom)
 
     def view_player_stats(self):
         #print("view stats")

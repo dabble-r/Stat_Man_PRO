@@ -6,6 +6,10 @@ from src.ui.views.league_view_teams import LeagueViewTeams
 from src.ui.styles.stylesheets import StyleSheets
 from src.ui.dialogs.update_lineup import UpdateLineupDialog
 from src.ui.dialogs.update_positions import UpdatePositionsDialog
+from src.ui.logic.dialogs.update_admin_logic import (
+    validate_roster_value,
+    normalize_stat_name_for_stack,
+)
 import random
 
 class UpdateAdminDialog(QDialog):
@@ -130,11 +134,9 @@ class UpdateAdminDialog(QDialog):
             case 'positions':
                 print("positions selected")
             case 'max_roster':
-                try: 
-                    val = int(input)
-                except:
-                    self.message.show_message("Roster value must be an integer!")
-                    #show_message(self, "Roster value must be an integer!")
+                is_valid, val = validate_roster_value(input)
+                if not is_valid:
+                    self.message.show_message("Roster value must be an integer between 1 and 50!")
                     return False
                 team.set_max_roster(val)
                 return True
@@ -190,10 +192,9 @@ class UpdateAdminDialog(QDialog):
 
         # node - stack
         # new_node = NodeStack(obj, team, stat, prev, func, flag, player=None)
-        if stat == 'max roster':
-            stat = 'max_roster'
+        stat_stack = normalize_stat_name_for_stack(stat)
 
-        self.stack.add_node(find_team, team, stat, getattr(find_team, stat), self.set_new_stat_team, 'team')
+        self.stack.add_node(find_team, team, stat_stack, getattr(find_team, stat_stack), self.set_new_stat_team, 'team')
         
         ##print('stat - update stats:', stat)
         self.set_new_stat_team(stat, input, find_team)
