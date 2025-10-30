@@ -12,7 +12,7 @@ BEFORE_AFTER.md
 update_imports.py
 verify_structure.py
 to_do.txt
-
+archive/demo/*
 
 # Virtual Environment
 myenv/
