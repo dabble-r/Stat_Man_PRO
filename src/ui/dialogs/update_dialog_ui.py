@@ -134,7 +134,7 @@ class UpdateDialog(QDialog):
         ##print('file path:', file_path)
         icon = self.get_icon(file_path)
         # test func 
-        if len(self.selected) == 2:
+        if len(self.selected) == 2 and icon is not None:
             self.change_logo(icon)
         return icon, file_path
 

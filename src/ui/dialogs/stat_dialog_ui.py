@@ -377,8 +377,10 @@ class Ui_StatDialog(QDialog):
                 item = QTreeWidgetItem(['Logo', ''])
                 item.setTextAlignment(0, Qt.AlignCenter)
                 icon = self.get_icon(logo_path)
-                item.setIcon(1, icon)
-                self.tree_widget.setIconSize(QSize(50, 50))
+                # Only set icon if it was successfully created
+                if icon is not None:
+                    item.setIcon(1, icon)
+                    self.tree_widget.setIconSize(QSize(50, 50))
                 self.tree_widget.addTopLevelItem(item)
             
             ###print('find team:\n', find_team)
@@ -402,8 +404,10 @@ class Ui_StatDialog(QDialog):
                 item = QTreeWidgetItem(['Photo', ''])
                 item.setTextAlignment(0, Qt.AlignCenter)
                 icon = self.get_icon(image_path)
-                item.setIcon(1, icon)
-                self.tree_widget.setIconSize(QSize(50, 50))
+                # Only set icon if it was successfully created
+                if icon is not None:
+                    item.setIcon(1, icon)
+                    self.tree_widget.setIconSize(QSize(50, 50))
                 self.tree_widget.addTopLevelItem(item)
             ###print('find player:\n', find_player)
             ret_raw = find_player.__str__().split("\n")

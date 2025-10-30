@@ -27,6 +27,41 @@ PRIMARY_KEYS = {
 ALLOWED_TABLES = {"league", "team", "player", "pitcher"}
 
 
+# ----------------------- Path Migration -----------------------
+def migrate_image_path(old_path):
+    """
+    Migrate old image paths (Saved/Images/) to new paths (data/images/).
+    
+    Args:
+        old_path: Image path string (may be old or new format)
+        
+    Returns:
+        Updated path string pointing to data/images/, or None if path is invalid
+    """
+    if not old_path or old_path in (0, '0', 0.0, '0.0', '', None):
+        return None
+    
+    path_str = str(old_path)
+    
+    # If path contains old Saved/Images structure, migrate it
+    if 'Saved/Images' in path_str or 'Saved\\Images' in path_str:
+        # Extract just the filename
+        filename = os.path.basename(path_str)
+        # Build new path
+        new_path = os.path.join(os.getcwd(), 'data', 'images', filename)
+        print(f"Migrating image path: {old_path} -> {new_path}")
+        return new_path
+    
+    # If path is already in new format or is just a filename, ensure it points to data/images
+    if not path_str.startswith('/') and not path_str.startswith('data/'):
+        filename = os.path.basename(path_str)
+        new_path = os.path.join(os.getcwd(), 'data', 'images', filename)
+        return new_path
+    
+    # Path is already in new format
+    return path_str
+
+
 # ----------------------- Dialogs -----------------------
 class SessionChoiceDialog(QDialog):
     """Dialog to select a CSV session."""
@@ -353,8 +388,10 @@ def load_all_gui(instances, parent, league):
                 load_team_gui(attr, parsed, team)
             elif attr == 'logo':
                 # Keep logo as string path - GUI will convert to QIcon when displaying
-                if val and val not in (0, '0', 0.0, '0.0', ''):
-                    load_team_gui(attr, val, team)
+                # Migrate old Saved/Images paths to new data/images paths
+                migrated_path = migrate_image_path(val)
+                if migrated_path:
+                    load_team_gui(attr, migrated_path, team)
                 else:
                     team.logo = None
             elif attr in ('teamID', 'leagueID'):
@@ -499,8 +536,10 @@ def load_all_gui(instances, parent, league):
             elif attr == 'image':
                 # Keep image as string path for player - stat dialog handles conversion
                 # Don't convert to QIcon here, just store the path
-                if val and val not in (0, '0', 0.0, '0.0', ''):
-                    player.image = val
+                # Migrate old Saved/Images paths to new data/images paths
+                migrated_path = migrate_image_path(val)
+                if migrated_path:
+                    player.image = migrated_path
                 else:
                     player.image = None
             else:
@@ -589,8 +628,10 @@ def load_all_gui(instances, parent, league):
                 # DON'T set pitcher.team to the string - we'll set it later after resolving the Team object
             elif attr == 'image':
                 # Keep image as string path for pitcher - stat dialog handles conversion
-                if val and val not in (0, '0', 0.0, '0.0', ''):
-                    pitcher.image = val
+                # Migrate old Saved/Images paths to new data/images paths
+                migrated_path = migrate_image_path(val)
+                if migrated_path:
+                    pitcher.image = migrated_path
                 else:
                     pitcher.image = None
             else:

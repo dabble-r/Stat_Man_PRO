@@ -12,7 +12,8 @@ class Icon():
   def create_icon(self):
     if self.file_path:
       pix_map = QPixmap(self.file_path)
-      if pix_map:
+      # Check if pixmap was successfully loaded (not null)
+      if not pix_map.isNull():
         icon = QIcon(pix_map)
         return icon
     return None
