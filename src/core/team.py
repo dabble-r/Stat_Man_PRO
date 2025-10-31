@@ -278,12 +278,25 @@ class Team():
   def get_team_era(self):
     return self.team_era 
   
+  def _to_int_safe(self, val):
+    """Safely convert value to int, returning 0 on failure."""
+    try:
+      if val is None:
+        return 0
+      if isinstance(val, int):
+        return val
+      if isinstance(val, float):
+        return int(val)
+      return int(float(str(val).strip()))
+    except Exception:
+      return 0
+  
   def get_team_hits(self):
     if len(self.players) == 0:
       return 0 
     total = 0 
     for player in self.players:
-      total += player.hit 
+      total += self._to_int_safe(player.hit)
     return total
   
   def get_team_so(self):
@@ -291,7 +304,7 @@ class Team():
       return 0 
     total = 0 
     for player in self.players:
-      total += player.so 
+      total += self._to_int_safe(player.so)
     return total
   
   def get_team_runs(self):
@@ -299,7 +312,7 @@ class Team():
       return 0 
     total = 0 
     for player in self.players:
-      total += player.runs 
+      total += self._to_int_safe(player.runs)
     return total
   
   def get_team_era(self):
@@ -320,7 +333,7 @@ class Team():
     for player in self.players:
       pos = player.positions
       if "pitcher" in pos:
-        total += player.p_so
+        total += self._to_int_safe(player.p_so)
     return total
 
      

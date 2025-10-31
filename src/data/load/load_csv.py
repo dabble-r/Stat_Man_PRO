@@ -730,7 +730,16 @@ def load_all_gui(instances, parent, league, mode=None):
             else:
                 if val in (0, '0', 0.0, '0.0'):
                     continue
-                load_player_gui(attr, val, player)
+                # Convert numeric stats to proper types when loading from CSV
+                if attr in PLAYER_NUMERIC_ADD:
+                    load_player_gui(attr, _to_int(val), player)
+                elif attr in PLAYER_DERIVED:
+                    try:
+                        load_player_gui(attr, float(val) if val not in (0, '0', 0.0, '0.0', '', None) else 0.0, player)
+                    except Exception:
+                        load_player_gui(attr, 0.0, player)
+                else:
+                    load_player_gui(attr, val, player)
         # resolve team after reading all attrs: by name first per requirement, then by ID
         if fallback_team_name:
             try:
@@ -882,7 +891,16 @@ def load_all_gui(instances, parent, league, mode=None):
             else:
                 if val in (0, '0', 0.0, '0.0'):
                     continue 
-                load_pitcher_gui(attr, val, pitcher)
+                # Convert numeric stats to proper types when loading from CSV
+                if attr in PITCHER_NUMERIC_ADD:
+                    load_pitcher_gui(attr, _to_int(val), pitcher)
+                elif attr in PITCHER_DERIVED:
+                    try:
+                        load_pitcher_gui(attr, float(val) if val not in (0, '0', 0.0, '0.0', '', None) else 0.0, pitcher)
+                    except Exception:
+                        load_pitcher_gui(attr, 0.0, pitcher)
+                else:
+                    load_pitcher_gui(attr, val, pitcher)
         # resolve team after reading all attrs: by name first per requirement, then by ID
         if fallback_team_name:
             try:
