@@ -1264,6 +1264,9 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
                 # Clear leaderboard
                 if hasattr(parent, 'leaderboard') and hasattr(parent.leaderboard, 'tree_widget'):
                     parent.leaderboard.tree_widget.clear()
+                    # Clear internal leaderboard data structure to prevent stale data
+                    if hasattr(parent.leaderboard, 'leaderboard_list'):
+                        parent.leaderboard.leaderboard_list.clear()
                     
                 print("GUI cleared successfully.")
             except Exception as e:
@@ -1319,6 +1322,9 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
                         parent.league_view_teams.tree2_bottom.clear()
                 if parent and hasattr(parent, 'leaderboard') and hasattr(parent.leaderboard, 'tree_widget'):
                     parent.leaderboard.tree_widget.clear()
+                    # Clear internal leaderboard data structure to prevent stale data
+                    if hasattr(parent.leaderboard, 'leaderboard_list'):
+                        parent.leaderboard.leaderboard_list.clear()
             except Exception as e:
                 print(f"Warning clearing in-memory/GUI on replace: {e}")
             # Recreate schema
