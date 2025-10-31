@@ -12,20 +12,15 @@ block_cipher = None
 # Base directory for resolving paths
 base_dir = Path('.')
 
-# Icon handling - Pillow is required for icon conversion/validation
-# If icon file exists, use it (Pillow will handle conversion if needed)
-icon_path = Path('assets/icons/favicon.ico')
-if icon_path.exists():
-    app_icon = str(icon_path)
-else:
-    app_icon = None
+# No icon - removed to avoid build issues
+app_icon = None
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('assets', 'assets'),  # Bundle assets directory
+        # No assets bundled - icons folder excluded to avoid icon processing errors
     ],
     hiddenimports=[
         'PySide6.QtCore',
@@ -54,7 +49,7 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# Build EXE with icon support (Pillow handles icon conversion)
+# Build EXE without icon (no favicon)
 exe = EXE(
     pyz,
     a.scripts,
@@ -75,6 +70,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=app_icon if app_icon is not None else None,
 )
 

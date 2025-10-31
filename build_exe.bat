@@ -24,9 +24,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Clean previous build to avoid cached icon issues
+echo Cleaning previous build...
+if exist build rmdir /s /q build
+if exist dist rmdir /s /q dist
+
 REM Run PyInstaller
 echo Running PyInstaller...
-pyinstaller stat_man_g.spec
+pyinstaller --clean stat_man_g.spec
 
 if errorlevel 1 (
     echo.
