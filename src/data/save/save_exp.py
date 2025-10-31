@@ -51,19 +51,28 @@ class FolderNameDialog(QDialog):
 
 # --- The main handler that performs the save logic --------------------------
 class SaveCSVHandler:
-    def __init__(self, league, message, parent_widget: QWidget, db_path: Path = Path("data") / "database", csv_path: Path = Path("data") / "exports"):
+    def __init__(self, league, message, parent_widget: QWidget, db_path: Path = None, csv_path: Path = None):
+        from src.utils.path_resolver import get_database_path, get_data_path
+        
         self.parent = parent_widget
+        # Use path resolver for database and CSV paths (works in both dev and bundled mode)
+        if db_path is None:
+            db_path = get_data_path("database")  # Gets data/database directory
+        if csv_path is None:
+            csv_path = get_data_path("exports")  # Gets data/exports directory
+        
         self.db_path = db_path
         self.csv_path = csv_path
         self.league = league
         self.message = message
         
-        # Construct proper paths: full database file path and base directory
-        db_file_path = self.db_path / "League.db"  # Full path: data/database/League.db
-        base_dir = Path("data")  # Base directory for file_dir
+        # Construct proper paths: full database file path
+        db_file_path = get_database_path()  # Uses path resolver: data/database/League.db
+        # Base directory is the data directory (for file_dir)
+        base_dir = get_data_path("")  # Gets data/ directory
         
         # if no League.db exists, init new db
-        self.save_csv = Save(db_file_path, league, self.message, base_dir, ['csv', 'database'])
+        self.save_csv = Save(db_file_path, league, self.message, str(base_dir), ['csv', 'database'])
     
     def run(self):
         try:

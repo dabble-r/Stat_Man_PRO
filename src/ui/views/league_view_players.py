@@ -202,7 +202,8 @@ class LeagueViewPlayers(QWidget):
         # load = Load(self.league, self.message, self.file_dir, csv_path=csv_path, parent=self)
         # load.load_master()
         stack = InstanceStack()
-        load_all_csv_to_db(self.league, csv_path, "data/database/League.db", stack, parent=self.parent)
+        from src.utils.path_resolver import get_database_path
+        load_all_csv_to_db(self.league, csv_path, str(get_database_path()), stack, parent=self.parent)
         
 
     def get_rand(self):

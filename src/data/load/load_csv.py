@@ -1387,8 +1387,11 @@ def load_all_csv_to_db(league, directory: str, db_path: str, stack, parent=None)
 
 
 if __name__ == "__main__":
+   from src.utils.path_resolver import get_data_path, get_database_path
    app = QApplication(sys.argv)
-   load_all_csv_to_db("data/exports", "data/database/League.db")
+   csv_path = str(get_data_path("exports"))
+   db_path = str(get_database_path())
+   load_all_csv_to_db("data/exports", db_path)  # Using path resolver for db_path
    
 
    sys.exit(app.exec())

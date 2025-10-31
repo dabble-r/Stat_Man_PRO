@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QDialog, QPushButton, QLabel, QVBoxLayout, QHBoxLa
 from PySide6.QtCore import QMetaObject
 from src.data.load.load import load_all_from_db
 from src.data.load.load_csv import load_all_csv_to_db
+from src.utils.path_resolver import get_database_path
 import math 
 import random
 
@@ -12,9 +13,9 @@ class Ui_LoadDialog:
         self.file_dir = file_dir
         self.csv_path = csv_path
         self.parent = parent
-        # Build DB path under file_dir/DB using league name when available
-        league_name = self.league.admin['Name'] if self.league.admin['Name'] else None
-        self.db = f"{self.file_dir}/DB/{league_name}.db" if league_name else None
+        # Use path resolver to get database path (consistent with save functionality)
+        # Always use League.db in the standard location
+        self.db = str(get_database_path())
         self.setupUi(parent)
 
     def setupUi(self, SaveDialog: QDialog):
@@ -56,11 +57,13 @@ class Ui_LoadDialog:
 
     def button_ok_handler(self):
         # Prefer CSV import to instantiate league/teams/players, then refresh UI
-        csv_dir = f"{self.file_dir}/CSV"
+        from src.utils.path_resolver import get_data_path
+        # Use path resolver for CSV directory (consistent with save paths)
+        csv_dir = str(get_data_path("exports"))  # CSV files are typically in data/exports
         if self.db:
             load_all_csv_to_db(self.league, csv_dir, self.db, self.parent.stack, parent=self.parent)
         else:
-            self.message.show_message("Please set a league name before loading from CSV.")
+            self.message.show_message("Database path not available. Please set a league name before loading.")
             return
 
         self.parent.accept()

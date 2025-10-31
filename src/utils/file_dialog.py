@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QDialog, QFileDialog, QApplication, QWidget
 import os 
 import sys
 import platform
+from src.utils.path_resolver import get_app_base_path, get_data_path
 
 class FileDialog(QWidget):
     def __init__(self, message, parent=None, flag=None):
@@ -58,7 +59,9 @@ class FileDialog(QWidget):
         # --- Validate and Store Paths ---
         try:
             if os.path.isfile(csv_file):
-                self.db_file_path = db_file if db_file is not None else f"{self.file_dir}/data/database/League.db"
+                # Use path resolver for default database path
+                from src.utils.path_resolver import get_database_path
+                self.db_file_path = db_file if db_file is not None else str(get_database_path())
                 self.csv_file_path = csv_file
                 print(f"Selected DB file: {db_file}")
                 print(f"Selected CSV file: {csv_file}")
@@ -160,29 +163,14 @@ class FileDialog(QWidget):
             self.message.show_message("No file selected!")
            
     def get_file_dir(self):
-        if self.os_type == 'Windows':
-            print('Windows')
-            new_dir = os.path.join(self.cwd, "data")
-            if not os.path.exists(new_dir):
-                os.mkdir(new_dir)
-            return new_dir
-
-        elif self.os_type == 'Linux':
-            print('Linux')
-            new_dir = f"{self.cwd}/data"
-            isExist = os.path.exists(new_dir)
-            if not isExist:
-                os.mkdir(new_dir)
-            return new_dir
-
-        else:
-            print('Other')
-            return 
+        """Get data directory using path resolver (works in both dev and bundled mode)."""
+        # Use path resolver to get the data directory
+        data_dir = get_data_path("")  # Gets data/ directory
+        return str(data_dir)
         
     def get_cwd(self):
-        """Return current working directory resolved by os.getcwd()."""
-        cwd = os.getcwd()
-        return cwd
+        """Return base application directory (executable dir in bundled mode)."""
+        return get_app_base_path()
     
     def get_file_path(self):
         """Return last selected file path (absolute) or None if none selected."""
