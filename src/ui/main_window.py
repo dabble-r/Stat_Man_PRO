@@ -178,8 +178,9 @@ class MainWindow(QWidget):
         """Clear all data from database on application close"""
         from pathlib import Path
         import sqlite3
+        from src.utils.path_resolver import get_database_path
         
-        db_path = Path("data/database/League.db")
+        db_path = get_database_path()
         
         if not db_path.exists():
             print("No database to clear on close.")

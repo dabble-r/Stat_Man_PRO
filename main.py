@@ -15,10 +15,12 @@ from src.ui.main_window import MainWindow
 from PySide6.QtWidgets import QApplication
 from src.utils.img_repo import CreateDir
 from src.ui.styles.stylesheets import StyleSheets
+from src.utils.path_resolver import get_database_path
 
 def clear_database_on_startup():
     """Clear all data from database on startup - database doesn't persist between sessions"""
-    db_path = Path("data/database/League.db")
+    # Use path resolver to ensure it works in both dev and bundled mode
+    db_path = get_database_path()
     
     if not db_path.exists():
         print("No database to clear on startup.")
