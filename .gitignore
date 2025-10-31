@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+fix_icon.py
 
 
 to_do.txt
@@ -19,6 +20,7 @@ BEFORE_AFTER.md
 PATH_UPDATES.md
 PATH_UPDATE_SUMMARY.md
 ICON_FIX.md
+fix-type-handling-bug.plan.md
 
 #test 
 tests/*
