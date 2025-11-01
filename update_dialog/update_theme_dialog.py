@@ -92,7 +92,7 @@ class UpdateTheme(QDialog):
       mainWindow = self.get_ancestor("Main Window")
       #print(mainWindow)
       mainWindow.setStyleSheet(getattr(self.styles, selectionFormat))
-      self.parent.player_input.setEnabled(True)
+      self.parent.user_input.setEnabled(True)
       self.parent.date_combo.setEnabled(True)
       self.parent.date_combo.setCurrentIndex(0)
       self.close()
