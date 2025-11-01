@@ -7,3 +7,6 @@ Saved/
 *.txt
 *.db
 *.csv
+**/*.pyc
+**/*.pyo
+__pycache__/
