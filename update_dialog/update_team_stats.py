@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QDialog, QLabel, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QRadioButton, QButtonGroup, QHBoxLayout, QSizePolicy, QTreeWidgetItem
+from PySide6.QtWidgets import QWidget, QDialog, QLabel, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QRadioButton, QButtonGroup, QHBoxLayout, QSizePolicy, QTreeWidgetItem, QTabWidget
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from start_page.league_view_teams import LeagueViewTeams
@@ -6,7 +6,6 @@ from start_page.league_view_teams import LeagueViewTeams
 from Styles.stylesheets import StyleSheets
 from stat_dialog.stat_dialog_ui import Ui_StatDialog
 from update_dialog.update_game import UpdateGameDialog
-from TabWidget.tab_widget import TabWidget
 import random
 
 class UpdateTeamStatsDialog(QDialog):
@@ -244,13 +243,33 @@ class UpdateTeamStatsDialog(QDialog):
         #tab_widget = TabWidget('Default Title')
         dialog = QDialog(self)
         dialog.resize(500, 750)
+        dialog.setWindowTitle('Game Stats')
 
-        self.tab_widget = TabWidget('Game Stats')
-        self.tab_widget.create_tab(1, 1, 'Tab 1')
-        self.tab_widget.create_tab(2, 2, 'Tab 2')
-        self.tab_widget.create_tab(3, 3, 'Tab 3')
+        # Replace TabWidget with QTabWidget
+        self.tab_widget = QTabWidget()
+        
+        # Create tab widgets and add them
+        tab1_widget = QWidget()
+        tab1_label = QLabel('Tab 1 Content')
+        tab1_layout = QVBoxLayout()
+        tab1_layout.addWidget(tab1_label)
+        tab1_widget.setLayout(tab1_layout)
+        self.tab_widget.addTab(tab1_widget, 'Tab 1')
+        
+        tab2_widget = QWidget()
+        tab2_label = QLabel('Tab 2 Content')
+        tab2_layout = QVBoxLayout()
+        tab2_layout.addWidget(tab2_label)
+        tab2_widget.setLayout(tab2_layout)
+        self.tab_widget.addTab(tab2_widget, 'Tab 2')
+        
+        tab3_widget = QWidget()
+        tab3_label = QLabel('Tab 3 Content')
+        tab3_layout = QVBoxLayout()
+        tab3_layout.addWidget(tab3_label)
+        tab3_widget.setLayout(tab3_layout)
+        self.tab_widget.addTab(tab3_widget, 'Tab 3')
 
-        self.tab_widget.enable_tabs()
         self.tab_widget.setFocusPolicy(Qt.StrongFocus)
 
         dialog_layout = QVBoxLayout(dialog)

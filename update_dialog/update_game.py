@@ -1,10 +1,9 @@
-from PySide6.QtWidgets import QWidget, QDialog, QLabel, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QRadioButton, QButtonGroup, QHBoxLayout, QSizePolicy, QTreeWidgetItem
+from PySide6.QtWidgets import QWidget, QDialog, QLabel, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QRadioButton, QButtonGroup, QHBoxLayout, QSizePolicy, QTreeWidgetItem, QTabWidget
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from start_page.league_view_teams import LeagueViewTeams
 
 from Styles.stylesheets import StyleSheets
-from TabWidget.tab_widget import TabWidget
 import random
 
 class UpdateGameDialog(QDialog):
